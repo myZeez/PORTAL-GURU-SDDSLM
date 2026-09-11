@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Resources\CalendarDays\CalendarDayResource;
 use App\Filament\Resources\Classrooms\ClassroomResource;
 use App\Filament\Resources\DailyRoutines\DailyRoutineResource;
 use App\Filament\Resources\Semesters\SemesterResource;
@@ -50,9 +51,9 @@ class Menu extends Page
             ],
             [
                 'phase' => 'Fase 2 — Modul Harian',
-                'status' => 'Segera Hadir',
+                'status' => 'Sedang Dikerjakan',
                 'modules' => [
-                    ['label' => 'Kalender Akademik', 'icon' => Heroicon::OutlinedCalendarDays, 'url' => null],
+                    ['label' => 'Kalender Akademik', 'icon' => Heroicon::OutlinedCalendarDays, 'url' => CalendarDayResource::getUrl()],
                     ['label' => 'Jadwal Pelajaran', 'icon' => Heroicon::OutlinedCalendarDays, 'url' => null],
                     ['label' => 'Matriks Jadwal', 'icon' => Heroicon::OutlinedSquares2x2, 'url' => null],
                     ['label' => 'Jadwal Saya', 'icon' => Heroicon::OutlinedMap, 'url' => null],

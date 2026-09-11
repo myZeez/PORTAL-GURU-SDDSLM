@@ -5,6 +5,7 @@
 .env.production
 .phpactor.json
 .phpunit.result.cache
+/.claude/launch.json
 /.codex
 /.cursor/
 /.idea
@@ -13,6 +14,7 @@
 /.vscode
 /.zed
 /auth.json
+/docs/design/pilihan-gaya/portal-guru-arah-desain.html
 /node_modules
 /public/build
 /public/css/filament

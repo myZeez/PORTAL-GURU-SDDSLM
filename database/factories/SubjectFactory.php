@@ -21,6 +21,7 @@ class SubjectFactory extends Factory
         return [
             'name' => Str::ucfirst(fake()->unique()->words(2, true)),
             'counts_toward_teaching_load' => true,
+            'allows_concurrent_scheduling' => false,
         ];
     }
 }

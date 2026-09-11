@@ -48,6 +48,10 @@ class SubjectResource extends Resource
                     ->label('Dihitung sebagai JP')
                     ->helperText('Matikan untuk kegiatan yang tidak masuk beban mengajar, seperti Penguatan Hafalan dan PRAMUKA.')
                     ->default(true),
+                Toggle::make('allows_concurrent_scheduling')
+                    ->label('Boleh dijadwalkan bareng, khusus hari Kamis')
+                    ->helperText('Nyalakan untuk mapel yang wajar diajar ke beberapa kelas sekaligus di hari Kamis (mis. PJOK, PRAMUKA), supaya tidak dianggap bentrok jadwal.')
+                    ->default(false),
             ]);
     }
 
@@ -64,6 +68,10 @@ class SubjectResource extends Resource
                 IconColumn::make('counts_toward_teaching_load')
                     ->label('Dihitung JP')
                     ->boolean(),
+                IconColumn::make('allows_concurrent_scheduling')
+                    ->label('Boleh bareng (Kamis)')
+                    ->boolean()
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->recordActions([
                 EditAction::make(),

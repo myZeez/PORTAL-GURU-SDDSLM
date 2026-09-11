@@ -1,5 +1,6 @@
 @php
     use App\Filament\Pages\Menu;
+    use App\Filament\Pages\MySchedule;
     use Filament\Support\Icons\Heroicon;
 
     $menuUrl = Menu::getUrl();
@@ -26,8 +27,8 @@
         [
             'label' => 'Jadwal',
             'icon' => Heroicon::OutlinedCalendarDays,
-            'url' => $menuUrl,
-            'active' => false,
+            'url' => MySchedule::getUrl(),
+            'active' => request()->routeIs('filament.portal.pages.my-schedule'),
         ],
         [
             'label' => 'Lainnya',
@@ -40,8 +41,8 @@
 
 {{--
     Floating dock, phones only (lg:hidden — the desktop sidebar carries navigation from
-    there up). Absensi/Jurnal/Jadwal point at the module map for now, since those pages
-    don't exist yet; they'll get their own routes as Fase 2 ships.
+    there up). Absensi/Jurnal still point at the module map, since those pages don't
+    exist yet; they'll get their own routes as Fase 2 ships further.
 --}}
 <nav
     class="fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 lg:hidden"

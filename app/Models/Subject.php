@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['name', 'counts_toward_teaching_load'])]
+#[Fillable(['name', 'counts_toward_teaching_load', 'allows_concurrent_scheduling'])]
 class Subject extends Model
 {
     /** @use HasFactory<SubjectFactory> */
@@ -22,6 +22,7 @@ class Subject extends Model
     {
         return [
             'counts_toward_teaching_load' => 'boolean',
+            'allows_concurrent_scheduling' => 'boolean',
         ];
     }
 }

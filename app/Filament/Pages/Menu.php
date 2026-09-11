@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Filament\Resources\CalendarDays\CalendarDayResource;
 use App\Filament\Resources\Classrooms\ClassroomResource;
 use App\Filament\Resources\DailyRoutines\DailyRoutineResource;
+use App\Filament\Resources\Schedules\ScheduleResource;
 use App\Filament\Resources\Semesters\SemesterResource;
 use App\Filament\Resources\Subjects\SubjectResource;
 use App\Filament\Resources\TimeSlots\TimeSlotResource;
@@ -54,9 +55,9 @@ class Menu extends Page
                 'status' => 'Sedang Dikerjakan',
                 'modules' => [
                     ['label' => 'Kalender Akademik', 'icon' => Heroicon::OutlinedCalendarDays, 'url' => CalendarDayResource::getUrl()],
-                    ['label' => 'Jadwal Pelajaran', 'icon' => Heroicon::OutlinedCalendarDays, 'url' => null],
-                    ['label' => 'Matriks Jadwal', 'icon' => Heroicon::OutlinedSquares2x2, 'url' => null],
-                    ['label' => 'Jadwal Saya', 'icon' => Heroicon::OutlinedMap, 'url' => null],
+                    ['label' => 'Jadwal Pelajaran', 'icon' => Heroicon::OutlinedCalendarDays, 'url' => ScheduleResource::getUrl()],
+                    ['label' => 'Matriks Jadwal', 'icon' => Heroicon::OutlinedSquares2x2, 'url' => ScheduleMatrix::getUrl()],
+                    ['label' => 'Jadwal Saya', 'icon' => Heroicon::OutlinedMap, 'url' => MySchedule::getUrl()],
                     ['label' => 'Absensi Guru', 'icon' => Heroicon::OutlinedClipboardDocumentCheck, 'url' => null],
                     ['label' => 'Penggantian Guru', 'icon' => Heroicon::OutlinedArrowsRightLeft, 'url' => null],
                     ['label' => 'Jurnal Guru', 'icon' => Heroicon::OutlinedPencilSquare, 'url' => null],

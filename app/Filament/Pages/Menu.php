@@ -6,13 +6,18 @@ use App\Filament\Resources\AdditionalDuties\AdditionalDutyResource;
 use App\Filament\Resources\Assessments\AssessmentResource;
 use App\Filament\Resources\CalendarDays\CalendarDayResource;
 use App\Filament\Resources\Classrooms\ClassroomResource;
+use App\Filament\Resources\Cocurriculars\CocurricularResource;
+use App\Filament\Resources\CocurricularSchedules\CocurricularScheduleResource;
 use App\Filament\Resources\Curricula\CurriculumResource;
 use App\Filament\Resources\DailyRoutines\DailyRoutineResource;
 use App\Filament\Resources\Journals\JournalResource;
+use App\Filament\Resources\OutingClasses\OutingClassResource;
+use App\Filament\Resources\PidReservations\PidReservationResource;
 use App\Filament\Resources\Schedules\ScheduleResource;
 use App\Filament\Resources\Semesters\SemesterResource;
 use App\Filament\Resources\Subjects\SubjectResource;
 use App\Filament\Resources\Substitutions\SubstitutionResource;
+use App\Filament\Resources\Supervisions\SupervisionResource;
 use App\Filament\Resources\Tasks\TaskResource;
 use App\Filament\Resources\TeacherAttendances\TeacherAttendanceResource;
 use App\Filament\Resources\TimeSlots\TimeSlotResource;
@@ -81,13 +86,15 @@ class Menu extends Page
                 'phase' => 'Fase 3 — Program & Layanan',
                 'status' => 'Sedang Dikerjakan',
                 'modules' => [
-                    ['label' => 'Kokurikuler', 'icon' => Heroicon::OutlinedPuzzlePiece, 'url' => null],
+                    ['label' => 'Jadwal Kokurikuler', 'icon' => Heroicon::OutlinedRectangleStack, 'url' => CocurricularScheduleResource::getUrl()],
+                    ['label' => 'Kokurikuler', 'icon' => Heroicon::OutlinedPuzzlePiece, 'url' => CocurricularResource::getUrl()],
                     ['label' => 'Kurikulum', 'icon' => Heroicon::OutlinedBookOpen, 'url' => CurriculumResource::getUrl()],
                     ['label' => 'Ekstrakurikuler', 'icon' => Heroicon::OutlinedSparkles, 'url' => null],
                     ['label' => 'Penilaian Sumatif', 'icon' => Heroicon::OutlinedDocumentText, 'url' => AssessmentResource::getUrl()],
-                    ['label' => 'PID', 'icon' => Heroicon::OutlinedComputerDesktop, 'url' => null],
-                    ['label' => 'Outing Class', 'icon' => Heroicon::OutlinedTruck, 'url' => null],
-                    ['label' => 'Supervisi', 'icon' => Heroicon::OutlinedEye, 'url' => null],
+                    ['label' => 'PID', 'icon' => Heroicon::OutlinedComputerDesktop, 'url' => PidReservationResource::getUrl()],
+                    ['label' => 'Outing Class', 'icon' => Heroicon::OutlinedTruck, 'url' => OutingClassResource::getUrl()],
+                    ['label' => 'Supervisi', 'icon' => Heroicon::OutlinedEye, 'url' => SupervisionResource::getUrl()],
+                    ['label' => 'Supervisi Saya', 'icon' => Heroicon::OutlinedEye, 'url' => MySupervisions::getUrl()],
                 ],
             ],
             [

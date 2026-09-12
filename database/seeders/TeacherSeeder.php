@@ -52,23 +52,49 @@ class TeacherSeeder extends Seeder
     ];
 
     /**
-     * Create one account per staff member.
+     * Create or sync one account per staff member.
      *
-     * Accounts start with a placeholder email and a random password, so nobody can sign in
-     * until an administrator enters the real email and resets the password. Existing
-     * accounts are left untouched, which keeps the seeder safe to re-run.
+     * Email is derived from the staff member's first name (e.g. "Jamatul Solihin" ->
+     * jamatul@guru.com), falling back to "firstname.secondname" when the first name repeats
+     * (there are three "Muhammad"s in the roster). Every account shares the same starting
+     * password, which staff are expected to change after their first sign-in.
      */
     public function run(): void
     {
+        $usedEmails = [];
+
         foreach (self::TEACHERS as [$code, $name, $position, $roles]) {
-            User::firstOrCreate(['code' => $code], [
+            $email = $this->emailFor($name, $usedEmails);
+            $usedEmails[] = $email;
+
+            User::updateOrCreate(['code' => $code], [
                 'name' => $name,
                 'position' => $position,
                 'roles' => $roles,
-                'email' => Str::lower($code).'@portal-guru.test',
-                'password' => Str::random(40),
+                'email' => $email,
+                'password' => '1234567890',
                 'is_active' => true,
             ]);
         }
+    }
+
+    /**
+     * Derive a "firstname@guru.com" login email from a staff member's full name, appending
+     * the second name when the first name has already been used by an earlier entry.
+     *
+     * @param  list<string>  $usedEmails
+     */
+    private function emailFor(string $name, array $usedEmails): string
+    {
+        $words = preg_split('/\s+/', trim(Str::before($name, ',')));
+        $normalize = fn (string $word): string => Str::of($word)->ascii()->lower()->replaceMatches('/[^a-z]/', '')->toString();
+
+        $local = $normalize($words[0]);
+
+        if (in_array("{$local}@guru.com", $usedEmails, true)) {
+            $local .= '.'.$normalize($words[1] ?? '');
+        }
+
+        return "{$local}@guru.com";
     }
 }

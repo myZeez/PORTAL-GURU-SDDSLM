@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use Filament\FontProviders\LocalFontProvider;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -27,7 +28,11 @@ class PortalPanelProvider extends PanelProvider
             ->path('')
             ->viteTheme('resources/css/filament/portal/theme.css')
             ->login()
-            ->font('Nunito')
+            ->font(
+                "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+                provider: LocalFontProvider::class,
+            )
+            ->monoFont('JetBrains Mono')
             ->brandLogo(fn () => view('filament.brand'))
             ->brandLogoHeight('2.75rem')
             ->colors($this->colors())
@@ -57,58 +62,28 @@ class PortalPanelProvider extends PanelProvider
     }
 
     /**
-     * Custom OKLCH palettes matching the "Ceria" direction picked for Portal Guru: the
-     * same hues used throughout the design mockups (green 152, rose 18, amber 80, blue
-     * 250), each shade chosen to stay inside the sRGB gamut so nothing gets clipped.
+     * "Bento Grid Tech Minimalist" palette: Apple-system aesthetic — white surfaces,
+     * charcoal text (never pure black, per the design system's own rule), a purple
+     * brand/CTA accent, and a soft blue secondary accent. `Color::hex()` auto-derives a
+     * full 50-950 shade scale from one anchor, and auto-detects near-achromatic input
+     * (like #1D1D1F) to zero out chroma for a clean neutral scale.
+     *
+     * success/warning/danger aren't part of the supplied design spec (which is written
+     * for a marketing site, not an admin panel's status semantics); I picked Apple's own
+     * iOS/macOS system colors for them, since they fit this exact aesthetic and stay
+     * under the spec's 80% saturation cap.
      *
      * @return array<string, array<int, string>>
      */
     private function colors(): array
     {
         return [
-            'primary' => $this->palette(152),
-            'success' => $this->palette(152),
-            'danger' => $this->palette(18, [
-                50 => 0.010, 100 => 0.025, 200 => 0.052, 300 => 0.088, 400 => 0.150,
-                500 => 0.160, 600 => 0.150, 700 => 0.130, 800 => 0.100, 900 => 0.080, 950 => 0.055,
-            ]),
-            'warning' => $this->palette(80, [
-                50 => 0.020, 100 => 0.045, 200 => 0.075, 300 => 0.115, 400 => 0.150,
-                500 => 0.129, 600 => 0.104, 700 => 0.087, 800 => 0.075, 900 => 0.063, 950 => 0.047,
-            ]),
-            'info' => $this->palette(250, [
-                50 => 0.010, 100 => 0.025, 200 => 0.051, 300 => 0.083, 400 => 0.140,
-                500 => 0.160, 600 => 0.142, 700 => 0.119, 800 => 0.100, 900 => 0.080, 950 => 0.055,
-            ]),
-            'gray' => Color::Slate,
+            'primary' => Color::hex('#9562e3'),
+            'info' => Color::hex('#0071e3'),
+            'gray' => Color::hex('#1d1d1f'),
+            'success' => Color::hex('#34c759'),
+            'warning' => Color::hex('#ff9500'),
+            'danger' => Color::hex('#ff3b30'),
         ];
-    }
-
-    /**
-     * Build an 11-shade OKLCH palette for a hue, using chroma values already verified to
-     * stay in the sRGB gamut for that hue (computed once; see docs/design for the script).
-     *
-     * @param  array<int, float>|null  $chroma  Per-shade chroma override, keyed by shade.
-     * @return array<int, string>
-     */
-    private function palette(int $hue, ?array $chroma = null): array
-    {
-        $lightness = [
-            50 => 0.979, 100 => 0.950, 200 => 0.900, 300 => 0.840, 400 => 0.740,
-            500 => 0.620, 600 => 0.500, 700 => 0.420, 800 => 0.360, 900 => 0.300, 950 => 0.220,
-        ];
-
-        $chroma ??= [
-            50 => 0.020, 100 => 0.045, 200 => 0.075, 300 => 0.115, 400 => 0.150,
-            500 => 0.160, 600 => 0.132, 700 => 0.111, 800 => 0.095, 900 => 0.080, 950 => 0.055,
-        ];
-
-        $shades = [];
-
-        foreach ($lightness as $shade => $l) {
-            $shades[$shade] = "oklch({$l} {$chroma[$shade]} {$hue})";
-        }
-
-        return $shades;
     }
 }

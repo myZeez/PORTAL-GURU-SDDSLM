@@ -8,6 +8,8 @@ use App\Filament\Resources\DailyRoutines\DailyRoutineResource;
 use App\Filament\Resources\Schedules\ScheduleResource;
 use App\Filament\Resources\Semesters\SemesterResource;
 use App\Filament\Resources\Subjects\SubjectResource;
+use App\Filament\Resources\Substitutions\SubstitutionResource;
+use App\Filament\Resources\TeacherAttendances\TeacherAttendanceResource;
 use App\Filament\Resources\TimeSlots\TimeSlotResource;
 use App\Filament\Resources\Users\UserResource;
 use BackedEnum;
@@ -58,8 +60,10 @@ class Menu extends Page
                     ['label' => 'Jadwal Pelajaran', 'icon' => Heroicon::OutlinedCalendarDays, 'url' => ScheduleResource::getUrl()],
                     ['label' => 'Matriks Jadwal', 'icon' => Heroicon::OutlinedSquares2x2, 'url' => ScheduleMatrix::getUrl()],
                     ['label' => 'Jadwal Saya', 'icon' => Heroicon::OutlinedMap, 'url' => MySchedule::getUrl()],
-                    ['label' => 'Absensi Guru', 'icon' => Heroicon::OutlinedClipboardDocumentCheck, 'url' => null],
-                    ['label' => 'Penggantian Guru', 'icon' => Heroicon::OutlinedArrowsRightLeft, 'url' => null],
+                    ['label' => 'Absensi Guru', 'icon' => Heroicon::OutlinedClipboardDocumentCheck, 'url' => TeacherAttendanceResource::getUrl()],
+                    ['label' => 'Absensi Saya', 'icon' => Heroicon::OutlinedClipboardDocumentCheck, 'url' => AttendanceSelf::getUrl()],
+                    ['label' => 'Penggantian Guru', 'icon' => Heroicon::OutlinedArrowsRightLeft, 'url' => SubstitutionResource::getUrl()],
+                    ['label' => 'Penggantian Saya', 'icon' => Heroicon::OutlinedArrowsRightLeft, 'url' => SubstitutionSelf::getUrl()],
                     ['label' => 'Jurnal Guru', 'icon' => Heroicon::OutlinedPencilSquare, 'url' => null],
                     ['label' => 'Manajemen Tugas', 'icon' => Heroicon::OutlinedClipboardDocumentList, 'url' => null],
                     ['label' => 'Tugas Saya', 'icon' => Heroicon::OutlinedClipboardDocumentList, 'url' => null],

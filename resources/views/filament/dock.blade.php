@@ -1,4 +1,5 @@
 @php
+    use App\Filament\Pages\AttendanceSelf;
     use App\Filament\Pages\Menu;
     use App\Filament\Pages\MySchedule;
     use Filament\Support\Icons\Heroicon;
@@ -15,8 +16,8 @@
         [
             'label' => 'Absensi',
             'icon' => Heroicon::OutlinedClipboardDocumentCheck,
-            'url' => $menuUrl,
-            'active' => false,
+            'url' => AttendanceSelf::getUrl(),
+            'active' => request()->routeIs('filament.portal.pages.attendance-self'),
         ],
         [
             'label' => 'Jurnal',

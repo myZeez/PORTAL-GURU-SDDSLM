@@ -3,12 +3,15 @@
 namespace App\Models;
 
 use App\Enums\SchoolDay;
+use Carbon\CarbonInterface;
 use Database\Factories\ScheduleFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable(['semester_id', 'day_of_week', 'time_slot_id', 'classroom_id', 'subject_id', 'teacher_id'])]
 class Schedule extends Model
@@ -79,6 +82,16 @@ class Schedule extends Model
     }
 
     /**
+     * Get the substitutions recorded against this slot, across all dates.
+     *
+     * @return HasMany<Substitution, $this>
+     */
+    public function substitutions(): HasMany
+    {
+        return $this->hasMany(Substitution::class);
+    }
+
+    /**
      * Get the teaching hours (JP) this slot counts for: 1, unless the subject is exempt
      * (Penguatan Hafalan, PRAMUKA), which count 0.
      *
@@ -145,5 +158,33 @@ class Schedule extends Model
             ->where('teacher_id', $teacherId)
             ->when($ignoreId, fn ($query) => $query->whereKeyNot($ignoreId))
             ->exists();
+    }
+
+    /**
+     * Get the slots a teacher is effectively responsible for on a given date: their own
+     * schedule for that day of week, minus any slot substituted away to someone else,
+     * plus any other teacher's slot they are covering as a substitute that date.
+     *
+     * @return Collection<int, self>
+     */
+    public static function effectiveForTeacherOnDate(int $teacherId, CarbonInterface $date): Collection
+    {
+        $dayOfWeek = $date->dayOfWeekIso;
+        $dateString = $date->toDateString();
+
+        $own = static::query()
+            ->where('teacher_id', $teacherId)
+            ->where('day_of_week', $dayOfWeek)
+            ->whereDoesntHave('substitutions', fn ($query) => $query->where('date', $dateString))
+            ->get();
+
+        $covering = static::query()
+            ->where('day_of_week', $dayOfWeek)
+            ->whereHas('substitutions', fn ($query) => $query
+                ->where('date', $dateString)
+                ->where('substitute_teacher_id', $teacherId))
+            ->get();
+
+        return $own->concat($covering);
     }
 }

@@ -1,5 +1,6 @@
 @php
     use App\Filament\Pages\AttendanceSelf;
+    use App\Filament\Pages\JournalSelf;
     use App\Filament\Pages\Menu;
     use App\Filament\Pages\MySchedule;
     use Filament\Support\Icons\Heroicon;
@@ -22,8 +23,8 @@
         [
             'label' => 'Jurnal',
             'icon' => Heroicon::OutlinedBookOpen,
-            'url' => $menuUrl,
-            'active' => false,
+            'url' => JournalSelf::getUrl(),
+            'active' => request()->routeIs('filament.portal.pages.journal-self'),
         ],
         [
             'label' => 'Jadwal',
@@ -42,8 +43,7 @@
 
 {{--
     Floating dock, phones only (lg:hidden — the desktop sidebar carries navigation from
-    there up). Absensi/Jurnal still point at the module map, since those pages don't
-    exist yet; they'll get their own routes as Fase 2 ships further.
+    there up).
 --}}
 <nav
     class="fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 lg:hidden"

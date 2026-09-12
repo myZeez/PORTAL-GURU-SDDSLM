@@ -89,7 +89,7 @@ class AttendanceSelf extends Page
                     ->footer([
                         SchemaActions::make([
                             Action::make('save')
-                                ->label($this->getRecord() ? 'Perbarui' : 'Simpan')
+                                ->label(fn (): string => $this->getRecord() ? 'Perbarui' : 'Simpan')
                                 ->submit('save'),
                         ]),
                     ]),

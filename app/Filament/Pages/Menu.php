@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Resources\AdditionalDuties\AdditionalDutyResource;
 use App\Filament\Resources\CalendarDays\CalendarDayResource;
 use App\Filament\Resources\Classrooms\ClassroomResource;
 use App\Filament\Resources\DailyRoutines\DailyRoutineResource;
@@ -10,6 +11,7 @@ use App\Filament\Resources\Schedules\ScheduleResource;
 use App\Filament\Resources\Semesters\SemesterResource;
 use App\Filament\Resources\Subjects\SubjectResource;
 use App\Filament\Resources\Substitutions\SubstitutionResource;
+use App\Filament\Resources\Tasks\TaskResource;
 use App\Filament\Resources\TeacherAttendances\TeacherAttendanceResource;
 use App\Filament\Resources\TimeSlots\TimeSlotResource;
 use App\Filament\Resources\Users\UserResource;
@@ -67,8 +69,9 @@ class Menu extends Page
                     ['label' => 'Penggantian Saya', 'icon' => Heroicon::OutlinedArrowsRightLeft, 'url' => SubstitutionSelf::getUrl()],
                     ['label' => 'Jurnal Guru', 'icon' => Heroicon::OutlinedPencilSquare, 'url' => JournalResource::getUrl()],
                     ['label' => 'Jurnal Saya', 'icon' => Heroicon::OutlinedPencilSquare, 'url' => JournalSelf::getUrl()],
-                    ['label' => 'Manajemen Tugas', 'icon' => Heroicon::OutlinedClipboardDocumentList, 'url' => null],
-                    ['label' => 'Tugas Saya', 'icon' => Heroicon::OutlinedClipboardDocumentList, 'url' => null],
+                    ['label' => 'Manajemen Tugas', 'icon' => Heroicon::OutlinedClipboardDocumentList, 'url' => TaskResource::getUrl()],
+                    ['label' => 'Tugas Tambahan', 'icon' => Heroicon::OutlinedBriefcase, 'url' => AdditionalDutyResource::getUrl()],
+                    ['label' => 'Tugas Saya', 'icon' => Heroicon::OutlinedClipboardDocumentList, 'url' => MyTasks::getUrl()],
                     ['label' => 'Profil', 'icon' => Heroicon::OutlinedUserCircle, 'url' => null],
                 ],
             ],

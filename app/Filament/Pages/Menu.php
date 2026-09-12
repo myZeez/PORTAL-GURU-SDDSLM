@@ -6,6 +6,7 @@ use App\Filament\Resources\AdditionalDuties\AdditionalDutyResource;
 use App\Filament\Resources\Assessments\AssessmentResource;
 use App\Filament\Resources\CalendarDays\CalendarDayResource;
 use App\Filament\Resources\Classrooms\ClassroomResource;
+use App\Filament\Resources\Curricula\CurriculumResource;
 use App\Filament\Resources\DailyRoutines\DailyRoutineResource;
 use App\Filament\Resources\Journals\JournalResource;
 use App\Filament\Resources\Schedules\ScheduleResource;
@@ -81,7 +82,7 @@ class Menu extends Page
                 'status' => 'Sedang Dikerjakan',
                 'modules' => [
                     ['label' => 'Kokurikuler', 'icon' => Heroicon::OutlinedPuzzlePiece, 'url' => null],
-                    ['label' => 'Kurikulum', 'icon' => Heroicon::OutlinedBookOpen, 'url' => null],
+                    ['label' => 'Kurikulum', 'icon' => Heroicon::OutlinedBookOpen, 'url' => CurriculumResource::getUrl()],
                     ['label' => 'Ekstrakurikuler', 'icon' => Heroicon::OutlinedSparkles, 'url' => null],
                     ['label' => 'Penilaian Sumatif', 'icon' => Heroicon::OutlinedDocumentText, 'url' => AssessmentResource::getUrl()],
                     ['label' => 'PID', 'icon' => Heroicon::OutlinedComputerDesktop, 'url' => null],

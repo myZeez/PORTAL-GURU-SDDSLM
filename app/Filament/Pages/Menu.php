@@ -10,6 +10,8 @@ use App\Filament\Resources\Cocurriculars\CocurricularResource;
 use App\Filament\Resources\CocurricularSchedules\CocurricularScheduleResource;
 use App\Filament\Resources\Curricula\CurriculumResource;
 use App\Filament\Resources\DailyRoutines\DailyRoutineResource;
+use App\Filament\Resources\ExtracurricularAttendances\ExtracurricularAttendanceResource;
+use App\Filament\Resources\Extracurriculars\ExtracurricularResource;
 use App\Filament\Resources\Journals\JournalResource;
 use App\Filament\Resources\OutingClasses\OutingClassResource;
 use App\Filament\Resources\PidReservations\PidReservationResource;
@@ -84,12 +86,14 @@ class Menu extends Page
             ],
             [
                 'phase' => 'Fase 3 — Program & Layanan',
-                'status' => 'Sedang Dikerjakan',
+                'status' => 'Selesai',
                 'modules' => [
                     ['label' => 'Jadwal Kokurikuler', 'icon' => Heroicon::OutlinedRectangleStack, 'url' => CocurricularScheduleResource::getUrl()],
                     ['label' => 'Kokurikuler', 'icon' => Heroicon::OutlinedPuzzlePiece, 'url' => CocurricularResource::getUrl()],
                     ['label' => 'Kurikulum', 'icon' => Heroicon::OutlinedBookOpen, 'url' => CurriculumResource::getUrl()],
-                    ['label' => 'Ekstrakurikuler', 'icon' => Heroicon::OutlinedSparkles, 'url' => null],
+                    ['label' => 'Jadwal Ekstrakurikuler', 'icon' => Heroicon::OutlinedSparkles, 'url' => ExtracurricularResource::getUrl()],
+                    ['label' => 'Absensi Ekstrakurikuler', 'icon' => Heroicon::OutlinedClipboardDocumentCheck, 'url' => ExtracurricularAttendanceResource::getUrl()],
+                    ['label' => 'Papan Ekstrakurikuler', 'icon' => Heroicon::OutlinedMegaphone, 'url' => ExtracurricularWall::getUrl()],
                     ['label' => 'Penilaian Sumatif', 'icon' => Heroicon::OutlinedDocumentText, 'url' => AssessmentResource::getUrl()],
                     ['label' => 'PID', 'icon' => Heroicon::OutlinedComputerDesktop, 'url' => PidReservationResource::getUrl()],
                     ['label' => 'Outing Class', 'icon' => Heroicon::OutlinedTruck, 'url' => OutingClassResource::getUrl()],

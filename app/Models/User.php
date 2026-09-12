@@ -80,6 +80,15 @@ class User extends Authenticatable implements FilamentUser
     }
 
     /**
+     * Determine whether the user coordinates extracurriculars (Koordinator Ekskul), who
+     * manages that module alongside administrators.
+     */
+    public function isEkskulCoordinator(): bool
+    {
+        return $this->hasRole(Role::KoordinatorEkskul);
+    }
+
+    /**
      * Get the classroom this user is the homeroom teacher (wali kelas) of.
      *
      * @return HasOne<Classroom, $this>

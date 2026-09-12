@@ -84,6 +84,7 @@ class OutingClassAccessTest extends TestCase
             ->callTableAction('approve', $outing);
 
         $this->assertSame(OutingStatus::Disetujui, $outing->refresh()->status);
+        $this->assertSame(1, $outing->requestedBy->fresh()->notifications()->count());
     }
 
     public function test_a_teacher_cannot_approve_their_own_request(): void

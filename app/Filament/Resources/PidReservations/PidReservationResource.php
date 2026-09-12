@@ -157,6 +157,12 @@ class PidReservationResource extends Resource
                         $record->update(['status' => OutingStatus::Disetujui]);
 
                         Notification::make()->success()->title('Reservasi PID disetujui.')->send();
+
+                        Notification::make()
+                            ->title('Reservasi PID disetujui')
+                            ->body("{$record->date->translatedFormat('d F Y')} · {$record->location}")
+                            ->success()
+                            ->sendToDatabase($record->requestedBy);
                     }),
                 Action::make('whatsapp')
                     ->label('WhatsApp')

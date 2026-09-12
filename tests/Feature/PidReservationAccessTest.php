@@ -137,6 +137,7 @@ class PidReservationAccessTest extends TestCase
             ->callTableAction('approve', $reservation);
 
         $this->assertSame(OutingStatus::Disetujui, $reservation->refresh()->status);
+        $this->assertSame(1, $reservation->requestedBy->fresh()->notifications()->count());
     }
 
     public function test_a_teacher_only_sees_their_own_reservations(): void

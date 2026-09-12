@@ -68,6 +68,8 @@ class SubstitutionAccessTest extends TestCase
             'schedule_id' => $schedule->id,
             'substitute_teacher_id' => $substitute->id,
         ]);
+
+        $this->assertSame(1, $substitute->fresh()->notifications()->count());
     }
 
     public function test_any_non_principal_teacher_can_open_penggantian_saya(): void

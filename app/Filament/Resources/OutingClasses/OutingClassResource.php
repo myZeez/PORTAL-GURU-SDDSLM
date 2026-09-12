@@ -116,6 +116,12 @@ class OutingClassResource extends Resource
                         $record->update(['status' => OutingStatus::Disetujui]);
 
                         Notification::make()->success()->title('Outing class disetujui.')->send();
+
+                        Notification::make()
+                            ->title('Pengajuan outing class disetujui')
+                            ->body("{$record->classroom->label} — {$record->destination}")
+                            ->success()
+                            ->sendToDatabase($record->requestedBy);
                     }),
                 EditAction::make(),
                 DeleteAction::make(),

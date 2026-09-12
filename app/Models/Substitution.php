@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Carbon\Carbon;
 use Database\Factories\SubstitutionFactory;
+use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -24,6 +25,24 @@ class Substitution extends Model
         static::creating(function (self $substitution): void {
             $substitution->created_by ??= auth()->id();
         });
+
+        static::created(function (self $substitution): void {
+            $substitution->notifySubstituteTeacher();
+        });
+    }
+
+    /**
+     * Notify the substitute teacher that they have been assigned to cover a class.
+     */
+    private function notifySubstituteTeacher(): void
+    {
+        $this->loadMissing('schedule.classroom', 'schedule.subject');
+
+        Notification::make()
+            ->title('Anda ditugaskan sebagai guru pengganti')
+            ->body("{$this->schedule->classroom->label} — {$this->schedule->subject->name} pada {$this->date->translatedFormat('d F Y')}.")
+            ->info()
+            ->sendToDatabase($this->substituteTeacher);
     }
 
     /**

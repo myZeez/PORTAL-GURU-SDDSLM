@@ -13,6 +13,7 @@ use App\Filament\Resources\DailyRoutines\DailyRoutineResource;
 use App\Filament\Resources\ExtracurricularAttendances\ExtracurricularAttendanceResource;
 use App\Filament\Resources\Extracurriculars\ExtracurricularResource;
 use App\Filament\Resources\Journals\JournalResource;
+use App\Filament\Resources\MonitoringSchedules\MonitoringScheduleResource;
 use App\Filament\Resources\OutingClasses\OutingClassResource;
 use App\Filament\Resources\PidReservations\PidReservationResource;
 use App\Filament\Resources\Schedules\ScheduleResource;
@@ -66,7 +67,7 @@ class Menu extends Page
             ],
             [
                 'phase' => 'Fase 2 — Modul Harian',
-                'status' => 'Sedang Dikerjakan',
+                'status' => 'Selesai',
                 'modules' => [
                     ['label' => 'Kalender Akademik', 'icon' => Heroicon::OutlinedCalendarDays, 'url' => CalendarDayResource::getUrl()],
                     ['label' => 'Jadwal Pelajaran', 'icon' => Heroicon::OutlinedCalendarDays, 'url' => ScheduleResource::getUrl()],
@@ -103,11 +104,10 @@ class Menu extends Page
             ],
             [
                 'phase' => 'Fase 4 — Monitoring',
-                'status' => 'Segera Hadir',
+                'status' => 'Selesai',
                 'modules' => [
-                    ['label' => 'Monev', 'icon' => Heroicon::OutlinedChartBar, 'url' => null],
-                    ['label' => 'Monitoring Administrasi Kelas', 'icon' => Heroicon::OutlinedClipboardDocumentCheck, 'url' => null],
-                    ['label' => 'Notifikasi Otomatis', 'icon' => Heroicon::OutlinedBell, 'url' => null],
+                    ['label' => 'Monev', 'icon' => Heroicon::OutlinedChartBar, 'url' => Monev::getUrl()],
+                    ['label' => 'Monitoring Administrasi Kelas', 'icon' => Heroicon::OutlinedClipboardDocumentCheck, 'url' => MonitoringScheduleResource::getUrl()],
                 ],
             ],
         ];

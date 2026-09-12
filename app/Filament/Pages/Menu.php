@@ -72,7 +72,7 @@ class Menu extends Page
                     ['label' => 'Manajemen Tugas', 'icon' => Heroicon::OutlinedClipboardDocumentList, 'url' => TaskResource::getUrl()],
                     ['label' => 'Tugas Tambahan', 'icon' => Heroicon::OutlinedBriefcase, 'url' => AdditionalDutyResource::getUrl()],
                     ['label' => 'Tugas Saya', 'icon' => Heroicon::OutlinedClipboardDocumentList, 'url' => MyTasks::getUrl()],
-                    ['label' => 'Profil', 'icon' => Heroicon::OutlinedUserCircle, 'url' => null],
+                    ['label' => 'Profil', 'icon' => Heroicon::OutlinedUserCircle, 'url' => MyProfile::getUrl()],
                 ],
             ],
             [

@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Filament\Resources\AdditionalDuties\AdditionalDutyResource;
+use App\Filament\Resources\Assessments\AssessmentResource;
 use App\Filament\Resources\CalendarDays\CalendarDayResource;
 use App\Filament\Resources\Classrooms\ClassroomResource;
 use App\Filament\Resources\DailyRoutines\DailyRoutineResource;
@@ -77,12 +78,12 @@ class Menu extends Page
             ],
             [
                 'phase' => 'Fase 3 — Program & Layanan',
-                'status' => 'Segera Hadir',
+                'status' => 'Sedang Dikerjakan',
                 'modules' => [
                     ['label' => 'Kokurikuler', 'icon' => Heroicon::OutlinedPuzzlePiece, 'url' => null],
                     ['label' => 'Kurikulum', 'icon' => Heroicon::OutlinedBookOpen, 'url' => null],
                     ['label' => 'Ekstrakurikuler', 'icon' => Heroicon::OutlinedSparkles, 'url' => null],
-                    ['label' => 'Penilaian Sumatif', 'icon' => Heroicon::OutlinedDocumentText, 'url' => null],
+                    ['label' => 'Penilaian Sumatif', 'icon' => Heroicon::OutlinedDocumentText, 'url' => AssessmentResource::getUrl()],
                     ['label' => 'PID', 'icon' => Heroicon::OutlinedComputerDesktop, 'url' => null],
                     ['label' => 'Outing Class', 'icon' => Heroicon::OutlinedTruck, 'url' => null],
                     ['label' => 'Supervisi', 'icon' => Heroicon::OutlinedEye, 'url' => null],

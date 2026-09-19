@@ -14,6 +14,7 @@ use App\Models\Substitution;
 use App\Models\TeacherAttendance;
 use App\Models\User;
 use Filament\Pages\Dashboard as BaseDashboard;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 
@@ -79,7 +80,7 @@ class Dashboard extends BaseDashboard
 
         $expected = User::query()
             ->where('is_active', true)
-            ->whereJsonDoesntContain('roles', Role::KepalaSekolah->value)
+            ->where(fn (Builder $query): Builder => $query->whereNull('role')->orWhere('role', '!=', Role::KepalaSekolah->value))
             ->count();
 
         return [

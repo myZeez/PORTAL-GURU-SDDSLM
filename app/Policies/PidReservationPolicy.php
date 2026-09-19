@@ -2,14 +2,16 @@
 
 namespace App\Policies;
 
+use App\Enums\Role;
 use App\Models\PidReservation;
 use App\Models\User;
 
 /**
  * Everyone except the principal can submit their own PID reservation ("Input"); only
- * administrators approve, edit, or remove reservations — the project scope's "setujui"
+ * Waka Sarpras approves, edits, or removes reservations — the project scope's "setujui"
  * capability (a PIN in the original app, replaced here by the normal role-based
- * authorization already used throughout the rebuild). The principal reads every
+ * authorization already used throughout the rebuild). Other administrators can still see
+ * every reservation, but only Waka Sarpras manages them. The principal reads every
  * reservation.
  */
 class PidReservationPolicy
@@ -31,17 +33,17 @@ class PidReservationPolicy
 
     public function update(User $user, PidReservation $pidReservation): bool
     {
-        return $user->isAdministrator();
+        return $user->hasRole(Role::WakaSarpras);
     }
 
     public function delete(User $user, PidReservation $pidReservation): bool
     {
-        return $user->isAdministrator();
+        return $user->hasRole(Role::WakaSarpras);
     }
 
     public function deleteAny(User $user): bool
     {
-        return $user->isAdministrator();
+        return $user->hasRole(Role::WakaSarpras);
     }
 
     public function restore(User $user, PidReservation $pidReservation): bool

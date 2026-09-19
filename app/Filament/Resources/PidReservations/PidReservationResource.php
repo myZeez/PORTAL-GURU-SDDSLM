@@ -151,7 +151,7 @@ class PidReservationResource extends Resource
                     ->label('Setujui')
                     ->icon(Heroicon::OutlinedCheck)
                     ->color('success')
-                    ->visible(fn (PidReservation $record): bool => auth()->user()->isAdministrator() && $record->status === OutingStatus::Menunggu)
+                    ->visible(fn (PidReservation $record): bool => auth()->user()->can('update', $record) && $record->status === OutingStatus::Menunggu)
                     ->requiresConfirmation()
                     ->action(function (PidReservation $record): void {
                         $record->update(['status' => OutingStatus::Disetujui]);

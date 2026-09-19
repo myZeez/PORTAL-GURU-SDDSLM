@@ -36,6 +36,6 @@ enum Role: string implements HasLabel
      */
     public static function administrators(): array
     {
-        return [self::WakaKurikulum, self::AdminKurikulum, self::Developer];
+        return [self::WakaKurikulum, self::AdminKurikulum, self::WakaSarpras, self::Developer];
     }
 }

@@ -99,7 +99,7 @@ class SubstitutionSelf extends Page
                         ->label('Guru pengganti')
                         ->options(fn (): array => User::query()
                             ->whereKeyNot(auth()->id())
-                            ->whereJsonDoesntContain('roles', Role::KepalaSekolah->value)
+                            ->where(fn (Builder $query): Builder => $query->whereNull('role')->orWhere('role', '!=', Role::KepalaSekolah->value))
                             ->orderBy('name')
                             ->pluck('name', 'id')
                             ->all())

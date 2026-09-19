@@ -3,20 +3,29 @@
 namespace App\Filament\Pages;
 
 use App\Enums\SchoolDay;
+use App\Filament\Resources\Users\PersonalDataFields;
 use App\Models\AdditionalDuty;
 use App\Models\Schedule;
 use App\Models\Semester;
 use BackedEnum;
+use Filament\Actions\Action;
+use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Schemas\Components\Actions as SchemaActions;
+use Filament\Schemas\Components\Form;
+use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Collection;
 
 /**
- * A read-only summary of the signed-in user's own workload: their weekly teaching
- * schedule (consecutive slots for the same classroom/subject merged), the JP that
- * teaching load carries per subject/classroom, any additional duties, and the combined
- * total — "Beban kerja = JP mengajar + JP tugas tambahan". Every user sees only
- * themselves, so there is nothing here to restrict access to.
+ * A summary of the signed-in user's own workload (read-only — teaching schedule,
+ * teaching load, additional duties, combined JP total) plus an editable personal-data
+ * form (photo, NIK/NUPTK, birthplace/date, gender, address, phone, last education).
+ * Account fields (code, position, email, password, role) stay admin-only, managed from
+ * Guru & Staf instead. Every user sees and edits only themselves, so there is nothing
+ * here to restrict access to.
+ *
+ * @property-read Schema $form
  */
 class MyProfile extends Page
 {
@@ -29,6 +38,46 @@ class MyProfile extends Page
     protected static ?string $title = 'Profil';
 
     protected static ?int $navigationSort = 7;
+
+    /**
+     * @var array<string, mixed>|null
+     */
+    public ?array $data = [];
+
+    public function mount(): void
+    {
+        $this->form->fill(auth()->user()->only([
+            'photo_path', 'nik', 'nuptk', 'birthplace', 'birthdate', 'gender', 'address', 'phone', 'last_education',
+        ]));
+    }
+
+    public function form(Schema $schema): Schema
+    {
+        return $schema
+            ->components([
+                Form::make(PersonalDataFields::make())
+                    ->columns(2)
+                    ->livewireSubmitHandler('save')
+                    ->footer([
+                        SchemaActions::make([
+                            Action::make('save')
+                                ->label('Simpan')
+                                ->submit('save'),
+                        ]),
+                    ]),
+            ])
+            ->statePath('data');
+    }
+
+    public function save(): void
+    {
+        auth()->user()->update($this->form->getState());
+
+        Notification::make()
+            ->success()
+            ->title('Profil tersimpan.')
+            ->send();
+    }
 
     /**
      * This teacher's schedule for the active semester, grouped by day and with

@@ -8,17 +8,20 @@ use App\Models\User;
 use BackedEnum;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
-use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rules\Password;
 use UnitEnum;
 
 class UserResource extends Resource
@@ -43,41 +46,48 @@ class UserResource extends Resource
     {
         return $schema
             ->components([
-                TextInput::make('code')
-                    ->label('Kode guru')
-                    ->maxLength(10)
-                    ->unique(ignoreRecord: true)
-                    ->dehydrateStateUsing(fn (?string $state): ?string => filled($state) ? Str::upper($state) : null),
-                TextInput::make('name')
-                    ->label('Nama lengkap')
-                    ->required()
-                    ->maxLength(255),
-                TextInput::make('position')
-                    ->label('Jabatan')
-                    ->maxLength(255),
-                TextInput::make('email')
-                    ->label('Email')
-                    ->email()
-                    ->required()
-                    ->maxLength(255)
-                    ->unique(ignoreRecord: true),
-                TextInput::make('password')
-                    ->label('Password')
-                    ->password()
-                    ->revealable()
-                    ->minLength(8)
-                    ->required(fn (string $operation): bool => $operation === 'create')
-                    ->dehydrated(fn (?string $state): bool => filled($state))
-                    ->helperText('Saat mengedit, kosongkan kalau password tidak diganti.'),
-                CheckboxList::make('roles')
-                    ->label('Peran')
-                    ->options(Role::class)
+                Section::make('Akun & Peran')
                     ->columns(2)
-                    ->helperText('Wali kelas dan pendamping diatur dari data rombel.'),
-                Toggle::make('is_active')
-                    ->label('Aktif')
-                    ->helperText('Akun nonaktif tidak bisa masuk, tapi riwayat datanya tetap tersimpan.')
-                    ->default(true),
+                    ->components([
+                        TextInput::make('code')
+                            ->label('Kode guru')
+                            ->maxLength(10)
+                            ->unique(ignoreRecord: true)
+                            ->dehydrateStateUsing(fn (?string $state): ?string => filled($state) ? Str::upper($state) : null),
+                        TextInput::make('name')
+                            ->label('Nama lengkap')
+                            ->required()
+                            ->maxLength(255),
+                        TextInput::make('position')
+                            ->label('Jabatan')
+                            ->maxLength(255),
+                        TextInput::make('email')
+                            ->label('Email')
+                            ->email()
+                            ->required()
+                            ->maxLength(255)
+                            ->unique(ignoreRecord: true),
+                        TextInput::make('password')
+                            ->label('Password')
+                            ->password()
+                            ->revealable()
+                            ->rule(Password::default())
+                            ->required(fn (string $operation): bool => $operation === 'create')
+                            ->dehydrated(fn (?string $state): bool => filled($state))
+                            ->helperText('Saat mengedit, kosongkan kalau password tidak diganti.'),
+                        Select::make('role')
+                            ->label('Peran')
+                            ->options(Role::class)
+                            ->placeholder('Guru (tidak ada peran khusus)')
+                            ->helperText('Wali kelas dan pendamping diatur dari data rombel.'),
+                        Toggle::make('is_active')
+                            ->label('Aktif')
+                            ->helperText('Akun nonaktif tidak bisa masuk, tapi riwayat datanya tetap tersimpan.')
+                            ->default(true),
+                    ]),
+                Section::make('Data Pribadi')
+                    ->columns(2)
+                    ->components(PersonalDataFields::make()),
             ]);
     }
 
@@ -87,6 +97,10 @@ class UserResource extends Resource
             ->recordTitleAttribute('name')
             ->defaultSort('name')
             ->columns([
+                ImageColumn::make('photo_path')
+                    ->label('Foto')
+                    ->disk('public')
+                    ->circular(),
                 TextColumn::make('code')
                     ->label('Kode')
                     ->searchable()
@@ -99,9 +113,10 @@ class UserResource extends Resource
                     ->label('Jabatan')
                     ->searchable()
                     ->toggleable(),
-                TextColumn::make('roles')
+                TextColumn::make('role')
                     ->label('Peran')
-                    ->badge(),
+                    ->badge()
+                    ->formatStateUsing(fn (?Role $state): string => $state?->getLabel() ?? 'Guru'),
                 TextColumn::make('email')
                     ->label('Email')
                     ->searchable()

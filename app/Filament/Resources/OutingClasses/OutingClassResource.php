@@ -110,7 +110,7 @@ class OutingClassResource extends Resource
                     ->label('Setujui')
                     ->icon(Heroicon::OutlinedCheck)
                     ->color('success')
-                    ->visible(fn (OutingClass $record): bool => auth()->user()->isAdministrator() && $record->status === OutingStatus::Menunggu)
+                    ->visible(fn (OutingClass $record): bool => auth()->user()->can('update', $record) && $record->status === OutingStatus::Menunggu)
                     ->requiresConfirmation()
                     ->action(function (OutingClass $record): void {
                         $record->update(['status' => OutingStatus::Disetujui]);

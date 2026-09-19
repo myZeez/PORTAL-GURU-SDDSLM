@@ -127,17 +127,25 @@ class PidReservationAccessTest extends TestCase
             ->assertHasNoActionErrors();
     }
 
-    public function test_an_administrator_can_approve_a_reservation(): void
+    public function test_only_waka_sarpras_can_approve_a_reservation(): void
     {
         $reservation = PidReservation::factory()->create();
 
-        $this->actingAs(User::factory()->withRoles(Role::WakaKurikulum)->create());
+        $this->actingAs(User::factory()->withRoles(Role::WakaSarpras)->create());
 
         Livewire::test(ManagePidReservations::class)
             ->callTableAction('approve', $reservation);
 
         $this->assertSame(OutingStatus::Disetujui, $reservation->refresh()->status);
         $this->assertSame(1, $reservation->requestedBy->fresh()->notifications()->count());
+    }
+
+    public function test_other_administrators_cannot_approve_a_reservation(): void
+    {
+        $reservation = PidReservation::factory()->create();
+
+        $this->assertFalse(User::factory()->withRoles(Role::WakaKurikulum)->create()->can('update', $reservation));
+        $this->assertFalse(User::factory()->withRoles(Role::AdminKurikulum)->create()->can('update', $reservation));
     }
 
     public function test_a_teacher_only_sees_their_own_reservations(): void

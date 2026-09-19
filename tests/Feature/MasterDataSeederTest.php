@@ -39,21 +39,21 @@ class MasterDataSeederTest extends TestCase
         $roleHolders = User::query()
             ->whereNotNull('code')
             ->get()
-            ->filter(fn (User $user): bool => $user->roles->isNotEmpty())
-            ->mapWithKeys(fn (User $user): array => [$user->code => $user->roles->all()]);
+            ->filter(fn (User $user): bool => $user->role !== null)
+            ->mapWithKeys(fn (User $user): array => [$user->code => $user->role]);
 
         $this->assertEquals([
-            'JJ' => [Role::KepalaSekolah],
-            'KN' => [Role::WakaKurikulum],
-            'MK' => [Role::KoordinatorEkskul],
-            'JW' => [Role::WakaSarpras],
-            'FB' => [Role::AdminKurikulum],
+            'JJ' => Role::KepalaSekolah,
+            'KN' => Role::WakaKurikulum,
+            'MK' => Role::KoordinatorEkskul,
+            'JW' => Role::WakaSarpras,
+            'FB' => Role::AdminKurikulum,
         ], $roleHolders->all());
 
         $this->assertSame('FB', Classroom::query()->where('code', 'II-A')->firstOrFail()->homeroomTeacher->code);
     }
 
-    public function test_it_can_run_again_without_duplicating_or_overwriting_data(): void
+    public function test_it_can_run_again_without_duplicating_data(): void
     {
         $this->seed();
         User::query()->where('code', 'KN')->update(['email' => 'kiki@sekolah.test']);
@@ -62,6 +62,7 @@ class MasterDataSeederTest extends TestCase
 
         $this->assertSame(34, User::query()->whereNotNull('code')->count());
         $this->assertSame(40, DailyRoutine::query()->count());
-        $this->assertSame('kiki@sekolah.test', User::query()->where('code', 'KN')->value('email'));
+        // Re-seeding resyncs the canonical login email rather than preserving a manual edit.
+        $this->assertSame('kiki@guru.com', User::query()->where('code', 'KN')->value('email'));
     }
 }

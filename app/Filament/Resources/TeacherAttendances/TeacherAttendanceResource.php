@@ -48,7 +48,9 @@ class TeacherAttendanceResource extends Resource
                     ->relationship(
                         name: 'teacher',
                         titleAttribute: 'name',
-                        modifyQueryUsing: fn (Builder $query): Builder => $query->whereJsonDoesntContain('roles', Role::KepalaSekolah->value),
+                        modifyQueryUsing: fn (Builder $query): Builder => $query->where(
+                            fn (Builder $query): Builder => $query->whereNull('role')->orWhere('role', '!=', Role::KepalaSekolah->value)
+                        ),
                     )
                     ->required()
                     ->searchable()

@@ -2,20 +2,9 @@
     <div class="flex flex-col gap-8">
         @foreach ($this->getModuleGroups() as $group)
             <section class="flex flex-col gap-3">
-                <div class="flex items-center gap-3">
-                    <h2 class="text-base font-bold text-gray-950 dark:text-white">
-                        {{ $group['phase'] }}
-                    </h2>
-                    <span
-                        @class([
-                            'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold',
-                            'bg-success-50 text-success-700 dark:bg-success-400/10 dark:text-success-400' => $group['status'] === 'Selesai',
-                            'bg-gray-100 text-gray-600 dark:bg-white/5 dark:text-gray-400' => $group['status'] !== 'Selesai',
-                        ])
-                    >
-                        {{ $group['status'] }}
-                    </span>
-                </div>
+                <h2 class="text-base font-bold text-gray-950 dark:text-white">
+                    {{ $group['group'] }}
+                </h2>
 
                 <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                     @foreach ($group['modules'] as $module)

@@ -74,7 +74,7 @@ class OutingClassAccessTest extends TestCase
             ->assertDontSee('Tujuan Lain');
     }
 
-    public function test_an_administrator_sees_every_request_and_can_approve(): void
+    public function test_only_waka_kurikulum_can_approve_a_request(): void
     {
         $outing = OutingClass::factory()->create();
 
@@ -85,6 +85,13 @@ class OutingClassAccessTest extends TestCase
 
         $this->assertSame(OutingStatus::Disetujui, $outing->refresh()->status);
         $this->assertSame(1, $outing->requestedBy->fresh()->notifications()->count());
+    }
+
+    public function test_other_administrators_cannot_approve_a_request(): void
+    {
+        $outing = OutingClass::factory()->create();
+
+        $this->assertFalse(User::factory()->withRoles(Role::AdminKurikulum)->create()->can('update', $outing));
     }
 
     public function test_a_teacher_cannot_approve_their_own_request(): void

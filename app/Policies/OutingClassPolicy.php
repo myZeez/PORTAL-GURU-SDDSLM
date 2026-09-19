@@ -2,13 +2,15 @@
 
 namespace App\Policies;
 
+use App\Enums\Role;
 use App\Models\OutingClass;
 use App\Models\User;
 
 /**
  * Everyone except the principal can submit their own outing request ("Input"); only
- * administrators approve, edit, or remove requests (their own included) — the project
- * scope's "setujui" (approve) capability. The principal reads every request.
+ * Waka Kurikulum approves, edits, or removes requests (their own included) — the project
+ * scope's "setujui" (approve) capability. Other administrators can still see every
+ * request, but only Waka Kurikulum manages them. The principal reads every request.
  */
 class OutingClassPolicy
 {
@@ -33,17 +35,17 @@ class OutingClassPolicy
 
     public function update(User $user, OutingClass $outingClass): bool
     {
-        return $user->isAdministrator();
+        return $user->hasRole(Role::WakaKurikulum);
     }
 
     public function delete(User $user, OutingClass $outingClass): bool
     {
-        return $user->isAdministrator();
+        return $user->hasRole(Role::WakaKurikulum);
     }
 
     public function deleteAny(User $user): bool
     {
-        return $user->isAdministrator();
+        return $user->hasRole(Role::WakaKurikulum);
     }
 
     public function restore(User $user, OutingClass $outingClass): bool

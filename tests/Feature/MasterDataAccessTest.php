@@ -96,8 +96,8 @@ class MasterDataAccessTest extends TestCase
                 'name' => 'Guru Baru, S.Pd.',
                 'position' => 'Wakil Kepala Bidang Sarana dan Prasarana',
                 'email' => 'guru.baru@example.com',
-                'password' => 'rahasia-sekali',
-                'roles' => [Role::WakaSarpras->value],
+                'password' => 'rahasia-sekali-2026',
+                'role' => Role::WakaSarpras->value,
                 'is_active' => true,
             ])
             ->assertHasNoActionErrors();
@@ -106,7 +106,7 @@ class MasterDataAccessTest extends TestCase
 
         $this->assertSame('BRU', $staff->code);
         $this->assertTrue($staff->hasRole(Role::WakaSarpras));
-        $this->assertFalse($staff->isAdministrator());
+        $this->assertTrue($staff->isAdministrator());
     }
 
     public function test_the_principal_does_not_get_a_create_button(): void

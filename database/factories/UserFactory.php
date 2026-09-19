@@ -32,7 +32,7 @@ class UserFactory extends Factory
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
-            'roles' => [],
+            'role' => null,
             'is_active' => true,
             'remember_token' => Str::random(10),
         ];
@@ -49,12 +49,13 @@ class UserFactory extends Factory
     }
 
     /**
-     * Give the user the given school roles.
+     * Give the user a school role. Every call site passes exactly one, but the signature
+     * stays variadic so existing `withRoles(Role::X)` calls keep working unchanged.
      */
     public function withRoles(Role ...$roles): static
     {
         return $this->state(fn (array $attributes) => [
-            'roles' => $roles,
+            'role' => $roles[0] ?? null,
         ]);
     }
 

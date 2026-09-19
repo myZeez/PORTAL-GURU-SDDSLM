@@ -32,3 +32,29 @@
 
 @source '../../../../app/Filament/**/*';
 @source '../../../../resources/views/filament/**/*';
+
+/*
+ * The floating mobile dock (filament.dock) is `fixed`, so it never pushes page content —
+ * without this, its last row sits directly behind the dock on every page below `lg`
+ * (matching the dock's own `lg:hidden`). Padding is generous enough to clear the dock's
+ * pill height plus its own bottom margin and safe-area inset.
+ */
+@media (max-width: 1023px) {
+    .fi-main {
+        padding-bottom: calc(6.5rem + env(safe-area-inset-bottom));
+    }
+}
+
+/*
+ * Below `lg`, the floating dock plus the "Menu Lainnya" page already give access to every
+ * section the sidebar drawer would — the drawer and its hamburger toggle are redundant
+ * chrome there (and a second, less thumb-friendly way to reach the same links), so they're
+ * hidden on phones. Desktop keeps the sidebar as its only navigation, since it has no dock.
+ */
+@media (max-width: 1023px) {
+    .fi-topbar-open-sidebar-btn,
+    .fi-sidebar,
+    .fi-sidebar-close-overlay {
+        display: none !important;
+    }
+}

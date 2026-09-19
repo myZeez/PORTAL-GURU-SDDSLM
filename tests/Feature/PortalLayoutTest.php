@@ -50,17 +50,18 @@ class PortalLayoutTest extends TestCase
             ], escape: false);
     }
 
-    public function test_the_module_map_lists_every_phase_and_module(): void
+    public function test_the_module_map_lists_every_group_and_module(): void
     {
         $this->actingAs(User::factory()->create())
             ->get(Menu::getUrl())
             ->assertOk()
-            ->assertSee('Fase 1 — Fondasi')
+            ->assertSee('Saya')
+            ->assertSee('Jadwal Saya')
+            ->assertSee('Program & Layanan')
             ->assertSee('Guru & Staf')
             ->assertSee(UserResource::getUrl(), escape: false)
-            ->assertSee('Fase 2 — Modul Harian')
-            ->assertSee('Absensi Guru')
-            ->assertSee('Fase 4 — Monitoring')
+            ->assertSee('Data Master')
+            ->assertSee('Monitoring')
             ->assertSee('Monev');
     }
 }

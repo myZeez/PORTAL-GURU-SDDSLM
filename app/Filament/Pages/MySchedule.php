@@ -36,7 +36,7 @@ class MySchedule extends Page
 
     public function selectDay(int $day): void
     {
-        $this->day = $day;
+        $this->day = SchoolDay::tryFrom($day)?->value ?? $this->day;
     }
 
     /**

@@ -69,7 +69,9 @@ class ExtracurricularWall extends Page
                         ->rows(3),
                     TextInput::make('image_drive_url')
                         ->label('Link Gambar (Google Drive)')
-                        ->url(),
+                        ->url()
+                        ->rule('url:http,https')
+                        ->maxLength(255),
                 ])
                     ->livewireSubmitHandler('postAnnouncement')
                     ->footer([

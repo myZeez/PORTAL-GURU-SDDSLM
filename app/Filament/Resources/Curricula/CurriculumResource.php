@@ -44,6 +44,8 @@ class CurriculumResource extends Resource
                 TextInput::make('drive_url')
                     ->label('Link Google Drive')
                     ->url()
+                    ->rule('url:http,https')
+                    ->maxLength(255)
                     ->required()
                     ->rules([
                         fn (): Closure => function (string $attribute, mixed $value, Closure $fail): void {

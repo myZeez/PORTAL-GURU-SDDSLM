@@ -15,6 +15,7 @@ use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Livewire\Attributes\Locked;
 use UnitEnum;
 
 /**
@@ -38,6 +39,7 @@ class Monev extends Page
 
     public string $month;
 
+    #[Locked]
     public ?int $selectedTeacherId = null;
 
     /**
@@ -61,11 +63,17 @@ class Monev extends Page
 
     public function selectTeacher(int $teacherId): void
     {
+        abort_unless($this->isLeadership() || $teacherId === auth()->id(), 403);
+
         $this->selectedTeacherId = $teacherId;
     }
 
     public function updatedMonth(): void
     {
+        if (! preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $this->month)) {
+            $this->month = now()->format('Y-m');
+        }
+
         $this->fillableAttendanceDates = null;
     }
 
@@ -87,6 +95,10 @@ class Monev extends Page
     public function getSelectedTeacher(): ?User
     {
         if (! $this->selectedTeacherId) {
+            return null;
+        }
+
+        if (! $this->isLeadership() && $this->selectedTeacherId !== auth()->id()) {
             return null;
         }
 

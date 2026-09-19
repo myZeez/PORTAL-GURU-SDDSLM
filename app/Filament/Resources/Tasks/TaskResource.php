@@ -60,6 +60,8 @@ class TaskResource extends Resource
                 TextInput::make('link')
                     ->label('Link')
                     ->url()
+                    ->rule('url:http,https')
+                    ->maxLength(255)
                     ->columnSpanFull(),
                 Textarea::make('description')
                     ->label('Deskripsi')

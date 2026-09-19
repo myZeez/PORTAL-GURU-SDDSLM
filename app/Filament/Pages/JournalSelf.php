@@ -103,7 +103,9 @@ class JournalSelf extends Page
                         ->label('Halaman'),
                     TextInput::make('resource_url')
                         ->label('Link Modul/RPP')
-                        ->url(),
+                        ->url()
+                        ->rule('url:http,https')
+                        ->maxLength(255),
                     Textarea::make('description')
                         ->label('Deskripsi')
                         ->rows(2),

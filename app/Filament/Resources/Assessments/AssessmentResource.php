@@ -81,10 +81,14 @@ class AssessmentResource extends Resource
                     ->label('Selesai'),
                 TextInput::make('question_link')
                     ->label('Link Soal')
-                    ->url(),
+                    ->url()
+                    ->rule('url:http,https')
+                    ->maxLength(255),
                 TextInput::make('result_link')
                     ->label('Link Hasil')
-                    ->url(),
+                    ->url()
+                    ->rule('url:http,https')
+                    ->maxLength(255),
             ]);
     }
 

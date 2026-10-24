@@ -7,7 +7,7 @@ use App\Models\User;
 
 /**
  * Everyone can see which kokurikuler days are scheduled and their target classrooms —
- * only administrators set the schedule itself.
+ * only curriculum management sets the schedule itself.
  */
 class CocurricularSchedulePolicy
 {
@@ -23,22 +23,22 @@ class CocurricularSchedulePolicy
 
     public function create(User $user): bool
     {
-        return $user->isAdministrator();
+        return $user->isCurriculumManager();
     }
 
     public function update(User $user, CocurricularSchedule $cocurricularSchedule): bool
     {
-        return $user->isAdministrator();
+        return $user->isCurriculumManager();
     }
 
     public function delete(User $user, CocurricularSchedule $cocurricularSchedule): bool
     {
-        return $user->isAdministrator();
+        return $user->isCurriculumManager();
     }
 
     public function deleteAny(User $user): bool
     {
-        return $user->isAdministrator();
+        return $user->isCurriculumManager();
     }
 
     public function restore(User $user, CocurricularSchedule $cocurricularSchedule): bool

@@ -43,7 +43,31 @@ class PidReservationResource extends Resource
     protected static ?string $pluralModelLabel = 'reservasi PID';
 
     /**
-     * Everyone submits their own reservations; administrators and the principal see
+     * The number of reservations waiting for a decision, shown only to the people who decide.
+     */
+    public static function getNavigationBadge(): ?string
+    {
+        if (! auth()->user()?->canApprovePidReservations()) {
+            return null;
+        }
+
+        $pending = PidReservation::query()->where('status', OutingStatus::Menunggu)->count();
+
+        return $pending > 0 ? (string) $pending : null;
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'warning';
+    }
+
+    public static function getNavigationBadgeTooltip(): ?string
+    {
+        return 'Reservasi menunggu persetujuan';
+    }
+
+    /**
+     * Everyone submits their own reservations; Waka Sarpras and the principal see
      * every reservation, per the project scope's "Input" (self-only) versus
      * "Lihat/setujui" split.
      */
@@ -51,7 +75,7 @@ class PidReservationResource extends Resource
     {
         $query = parent::getEloquentQuery();
 
-        if (! auth()->user()->isAdministrator() && ! auth()->user()->isPrincipal()) {
+        if (! auth()->user()->canReviewPidReservations()) {
             $query->where('requested_by', auth()->id());
         }
 
@@ -117,7 +141,7 @@ class PidReservationResource extends Resource
     {
         return $table
             ->defaultSort('date', 'desc')
-            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['subject', 'requestedBy']))
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['subject', 'requestedBy', 'approvedBy']))
             ->columns([
                 TextColumn::make('date')
                     ->label('Tanggal')
@@ -140,6 +164,11 @@ class PidReservationResource extends Resource
                 TextColumn::make('requestedBy.name')
                     ->label('Diajukan oleh')
                     ->searchable(),
+                TextColumn::make('approvedBy.name')
+                    ->label('Disetujui oleh')
+                    ->placeholder('—')
+                    ->description(fn (PidReservation $record): ?string => $record->approved_at?->translatedFormat('d M Y H:i'))
+                    ->toggleable(),
             ])
             ->filters([
                 SelectFilter::make('status')
@@ -154,7 +183,7 @@ class PidReservationResource extends Resource
                     ->visible(fn (PidReservation $record): bool => auth()->user()->can('update', $record) && $record->status === OutingStatus::Menunggu)
                     ->requiresConfirmation()
                     ->action(function (PidReservation $record): void {
-                        $record->update(['status' => OutingStatus::Disetujui]);
+                        $record->approve(auth()->user());
 
                         Notification::make()->success()->title('Reservasi PID disetujui.')->send();
 
@@ -162,6 +191,12 @@ class PidReservationResource extends Resource
                             ->title('Reservasi PID disetujui')
                             ->body("{$record->date->translatedFormat('d F Y')} · {$record->location}")
                             ->success()
+                            ->actions([
+                                Action::make('open')
+                                    ->label('Lihat reservasi')
+                                    ->url(self::getUrl())
+                                    ->markAsRead(),
+                            ])
                             ->sendToDatabase($record->requestedBy);
                     }),
                 Action::make('whatsapp')

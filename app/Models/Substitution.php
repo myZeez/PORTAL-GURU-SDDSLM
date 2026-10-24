@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use App\Filament\Pages\SubstitutionSelf;
 use Carbon\Carbon;
 use Database\Factories\SubstitutionFactory;
+use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -42,6 +44,12 @@ class Substitution extends Model
             ->title('Anda ditugaskan sebagai guru pengganti')
             ->body("{$this->schedule->classroom->label} — {$this->schedule->subject->name} pada {$this->date->translatedFormat('d F Y')}.")
             ->info()
+            ->actions([
+                Action::make('open')
+                    ->label('Lihat penggantian')
+                    ->url(SubstitutionSelf::getUrl())
+                    ->markAsRead(),
+            ])
             ->sendToDatabase($this->substituteTeacher);
     }
 

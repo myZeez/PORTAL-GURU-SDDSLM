@@ -45,6 +45,8 @@ class Menu extends Page
 
     protected static ?int $navigationSort = 100;
 
+    protected static bool $shouldRegisterNavigation = false;
+
     /**
      * Every module in the panel, grouped the same way as the sidebar navigation (rather
      * than the project's internal build-phase order), since this page is the mobile
@@ -54,7 +56,7 @@ class Menu extends Page
      */
     public function getModuleGroups(): array
     {
-        return [
+        $groups = [
             [
                 'group' => 'Saya',
                 'modules' => [
@@ -62,6 +64,7 @@ class Menu extends Page
                     ['label' => 'Absensi Saya', 'icon' => Heroicon::OutlinedClipboardDocumentCheck, 'url' => AttendanceSelf::getUrl()],
                     ['label' => 'Penggantian Saya', 'icon' => Heroicon::OutlinedArrowsRightLeft, 'url' => SubstitutionSelf::getUrl()],
                     ['label' => 'Jurnal Saya', 'icon' => Heroicon::OutlinedPencilSquare, 'url' => JournalSelf::getUrl()],
+                    ['label' => 'Checklist SIMPATI', 'icon' => Heroicon::OutlinedClipboardDocumentCheck, 'url' => SimpatiChecklist::getUrl(), 'visible' => SimpatiChecklist::canAccess()],
                     ['label' => 'Tugas Saya', 'icon' => Heroicon::OutlinedClipboardDocumentList, 'url' => MyTasks::getUrl()],
                     ['label' => 'Profil', 'icon' => Heroicon::OutlinedUserCircle, 'url' => MyProfile::getUrl()],
                     ['label' => 'Ubah Password', 'icon' => Heroicon::OutlinedKey, 'url' => ChangePassword::getUrl()],
@@ -74,7 +77,7 @@ class Menu extends Page
                 'modules' => [
                     ['label' => 'Penilaian Sumatif', 'icon' => Heroicon::OutlinedDocumentText, 'url' => AssessmentResource::getUrl()],
                     ['label' => 'Kurikulum', 'icon' => Heroicon::OutlinedBookOpen, 'url' => CurriculumResource::getUrl()],
-                    ['label' => 'Supervisi', 'icon' => Heroicon::OutlinedEye, 'url' => SupervisionResource::getUrl()],
+                    ['label' => 'Supervisi', 'icon' => Heroicon::OutlinedEye, 'url' => SupervisionResource::getUrl(), 'visible' => SupervisionResource::canAccess()],
                     ['label' => 'Outing Class', 'icon' => Heroicon::OutlinedTruck, 'url' => OutingClassResource::getUrl()],
                     ['label' => 'PID', 'icon' => Heroicon::OutlinedComputerDesktop, 'url' => PidReservationResource::getUrl()],
                     ['label' => 'Jadwal Kokurikuler', 'icon' => Heroicon::OutlinedRectangleStack, 'url' => CocurricularScheduleResource::getUrl()],
@@ -86,39 +89,53 @@ class Menu extends Page
             [
                 'group' => 'Akademik',
                 'modules' => [
-                    ['label' => 'Kalender Akademik', 'icon' => Heroicon::OutlinedCalendarDays, 'url' => CalendarDayResource::getUrl()],
-                    ['label' => 'Jadwal Pelajaran', 'icon' => Heroicon::OutlinedCalendarDays, 'url' => ScheduleResource::getUrl()],
+                    ['label' => 'Kalender Akademik', 'icon' => Heroicon::OutlinedCalendarDays, 'url' => CalendarDayResource::getUrl(), 'visible' => CalendarDayResource::canAccess()],
+                    ['label' => 'Jadwal Pelajaran', 'icon' => Heroicon::OutlinedCalendarDays, 'url' => ScheduleResource::getUrl(), 'visible' => ScheduleResource::canAccess()],
                     ['label' => 'Matriks Jadwal', 'icon' => Heroicon::OutlinedSquares2x2, 'url' => ScheduleMatrix::getUrl()],
                 ],
             ],
             [
                 'group' => 'Monitoring',
                 'modules' => [
-                    ['label' => 'Monitoring Kelas', 'icon' => Heroicon::OutlinedClipboardDocumentCheck, 'url' => MonitoringScheduleResource::getUrl()],
+                    ['label' => 'Monitoring Kelas', 'icon' => Heroicon::OutlinedClipboardDocumentCheck, 'url' => MonitoringScheduleResource::getUrl(), 'visible' => MonitoringScheduleResource::canAccess()],
                     ['label' => 'Monev', 'icon' => Heroicon::OutlinedChartBar, 'url' => Monev::getUrl()],
+                    ['label' => 'Performance Guru', 'icon' => Heroicon::OutlinedChartBarSquare, 'url' => PerformanceDashboard::getUrl()],
                 ],
             ],
             [
                 'group' => 'Administrasi Harian',
                 'modules' => [
-                    ['label' => 'Absensi Guru', 'icon' => Heroicon::OutlinedClipboardDocumentCheck, 'url' => TeacherAttendanceResource::getUrl()],
-                    ['label' => 'Penggantian Guru', 'icon' => Heroicon::OutlinedArrowsRightLeft, 'url' => SubstitutionResource::getUrl()],
-                    ['label' => 'Jurnal Guru', 'icon' => Heroicon::OutlinedPencilSquare, 'url' => JournalResource::getUrl()],
-                    ['label' => 'Manajemen Tugas', 'icon' => Heroicon::OutlinedClipboardDocumentList, 'url' => TaskResource::getUrl()],
-                    ['label' => 'Tugas Tambahan', 'icon' => Heroicon::OutlinedBriefcase, 'url' => AdditionalDutyResource::getUrl()],
+                    ['label' => 'Absensi Guru', 'icon' => Heroicon::OutlinedClipboardDocumentCheck, 'url' => TeacherAttendanceResource::getUrl(), 'visible' => TeacherAttendanceResource::canAccess()],
+                    ['label' => 'Penggantian Guru', 'icon' => Heroicon::OutlinedArrowsRightLeft, 'url' => SubstitutionResource::getUrl(), 'visible' => SubstitutionResource::canAccess()],
+                    ['label' => 'Jurnal Guru', 'icon' => Heroicon::OutlinedPencilSquare, 'url' => JournalResource::getUrl(), 'visible' => JournalResource::canAccess()],
+                    ['label' => 'Manajemen Tugas', 'icon' => Heroicon::OutlinedClipboardDocumentList, 'url' => TaskResource::getUrl(), 'visible' => TaskResource::canAccess()],
+                    ['label' => 'Tugas Tambahan', 'icon' => Heroicon::OutlinedBriefcase, 'url' => AdditionalDutyResource::getUrl(), 'visible' => AdditionalDutyResource::canAccess()],
                 ],
             ],
             [
                 'group' => 'Data Master',
                 'modules' => [
-                    ['label' => 'Guru & Staf', 'icon' => Heroicon::OutlinedUsers, 'url' => UserResource::getUrl()],
-                    ['label' => 'Rombel', 'icon' => Heroicon::OutlinedAcademicCap, 'url' => ClassroomResource::getUrl()],
-                    ['label' => 'Mata Pelajaran', 'icon' => Heroicon::OutlinedBookOpen, 'url' => SubjectResource::getUrl()],
-                    ['label' => 'Jam Pelajaran', 'icon' => Heroicon::OutlinedClock, 'url' => TimeSlotResource::getUrl()],
-                    ['label' => 'Rutinitas Harian', 'icon' => Heroicon::OutlinedQueueList, 'url' => DailyRoutineResource::getUrl()],
-                    ['label' => 'Tahun Ajaran & Semester', 'icon' => Heroicon::OutlinedCalendarDays, 'url' => SemesterResource::getUrl()],
+                    ['label' => 'Guru & Staf', 'icon' => Heroicon::OutlinedUsers, 'url' => UserResource::getUrl(), 'visible' => UserResource::canAccess()],
+                    ['label' => 'Rombel', 'icon' => Heroicon::OutlinedAcademicCap, 'url' => ClassroomResource::getUrl(), 'visible' => ClassroomResource::canAccess()],
+                    ['label' => 'Mata Pelajaran', 'icon' => Heroicon::OutlinedBookOpen, 'url' => SubjectResource::getUrl(), 'visible' => SubjectResource::canAccess()],
+                    ['label' => 'Jam Pelajaran', 'icon' => Heroicon::OutlinedClock, 'url' => TimeSlotResource::getUrl(), 'visible' => TimeSlotResource::canAccess()],
+                    ['label' => 'Rutinitas Harian', 'icon' => Heroicon::OutlinedQueueList, 'url' => DailyRoutineResource::getUrl(), 'visible' => DailyRoutineResource::canAccess()],
+                    ['label' => 'Tahun Ajaran & Semester', 'icon' => Heroicon::OutlinedCalendarDays, 'url' => SemesterResource::getUrl(), 'visible' => SemesterResource::canAccess()],
                 ],
             ],
         ];
+
+        return collect($groups)
+            ->map(function (array $group): array {
+                $group['modules'] = collect($group['modules'])
+                    ->filter(fn (array $module): bool => $module['visible'] ?? true)
+                    ->values()
+                    ->all();
+
+                return $group;
+            })
+            ->filter(fn (array $group): bool => $group['modules'] !== [])
+            ->values()
+            ->all();
     }
 }

@@ -3,8 +3,11 @@
 namespace App\Models;
 
 use App\Enums\OutingStatus;
+use App\Filament\Resources\PidReservations\PidReservationResource;
 use Carbon\Carbon;
 use Database\Factories\PidReservationFactory;
+use Filament\Actions\Action;
+use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -23,6 +26,36 @@ class PidReservation extends Model
             $reservation->requested_by ??= auth()->id();
             $reservation->status ??= OutingStatus::Menunggu;
         });
+
+        static::created(function (self $reservation): void {
+            $reservation->notifyApprovers();
+        });
+    }
+
+    /**
+     * Tell everyone who can approve PID reservations that a request is waiting for them.
+     */
+    private function notifyApprovers(): void
+    {
+        $recipients = User::pidReservationApprovers()->reject(fn (User $user): bool => $user->id === $this->requested_by);
+
+        if ($recipients->isEmpty()) {
+            return;
+        }
+
+        $this->loadMissing('requestedBy');
+
+        Notification::make()
+            ->title('Peminjaman PID menunggu persetujuan')
+            ->body("{$this->date->translatedFormat('d F Y')} · {$this->location}, diajukan oleh {$this->requestedBy?->name}.")
+            ->warning()
+            ->actions([
+                Action::make('review')
+                    ->label('Tinjau pengajuan')
+                    ->url(PidReservationResource::getUrl())
+                    ->markAsRead(),
+            ])
+            ->sendToDatabase($recipients);
     }
 
     /**
@@ -34,7 +67,21 @@ class PidReservation extends Model
     {
         return [
             'status' => OutingStatus::class,
+            'approved_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Approve a pending reservation and record who approved it and when. The approver and
+     * the time are not mass-assignable, so this is the only way they get written.
+     */
+    public function approve(User $approver): void
+    {
+        $this->forceFill([
+            'status' => OutingStatus::Disetujui,
+            'approved_by' => $approver->id,
+            'approved_at' => now(),
+        ])->save();
     }
 
     /**
@@ -103,6 +150,16 @@ class PidReservation extends Model
     public function requestedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'requested_by');
+    }
+
+    /**
+     * Get the user who approved this reservation.
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function approvedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by');
     }
 
     /**

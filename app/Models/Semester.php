@@ -40,6 +40,36 @@ class Semester extends Model
     }
 
     /**
+     * Get the semester a date falls in, judged by {@see self::effectiveEndsOn()}; none when
+     * the date is before every semester or between two that have ended.
+     */
+    public static function containing(Carbon $date): ?self
+    {
+        return static::query()
+            ->whereNotNull('starts_on')
+            ->where('starts_on', '<=', $date->toDateString())
+            ->orderByDesc('starts_on')
+            ->get()
+            ->first(fn (self $semester): bool => $semester->effectiveEndsOn()->gte($date->copy()->startOfDay()));
+    }
+
+    /**
+     * The last day this semester covers. The end date is optional, so without one the
+     * semester is taken to run until the day before the next one begins, or, when it is the
+     * latest, to the end of the current month. Only meaningful once `starts_on` is set.
+     */
+    public function effectiveEndsOn(): Carbon
+    {
+        if ($this->ends_on) {
+            return $this->ends_on->copy();
+        }
+
+        $nextStart = static::query()->where('starts_on', '>', $this->starts_on->toDateString())->min('starts_on');
+
+        return ($nextStart ? Carbon::parse($nextStart)->subDay() : Carbon::today()->endOfMonth()->startOfDay())->max($this->starts_on)->copy();
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>

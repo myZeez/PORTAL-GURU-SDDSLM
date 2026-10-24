@@ -1,12 +1,22 @@
 <x-filament-panels::page>
     <div class="flex flex-col gap-4">
-        <div class="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4 dark:border-white/10 dark:bg-gray-900">
+        <div class="flex flex-wrap items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4 dark:border-white/10 dark:bg-gray-900">
             <label class="text-sm font-bold text-gray-950 dark:text-white">Bulan</label>
             <input
                 type="month"
                 wire:model.live="month"
                 class="fi-input rounded-lg border-none bg-white text-sm text-gray-950 shadow-sm ring-1 ring-gray-950/10 focus:ring-2 focus:ring-primary-600 dark:bg-white/5 dark:text-white dark:ring-white/20"
             />
+            @if ($this->isLeadership())
+                <x-filament::button
+                    tag="a"
+                    href="{{ route('reports.monev.pdf', ['month' => $month]) }}"
+                    icon="heroicon-o-arrow-down-tray"
+                    target="_blank"
+                >
+                    Unduh PDF
+                </x-filament::button>
+            @endif
         </div>
 
         <div class="flex flex-col gap-2.5">

@@ -14,6 +14,7 @@ use App\Models\Schedule;
 use App\Models\Semester;
 use App\Models\Subject;
 use App\Models\Substitution;
+use App\Models\Task;
 use App\Models\TeacherAttendance;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -25,12 +26,21 @@ class DashboardTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_administrators_and_the_principal_and_koordinator_ekskul_get_the_leadership_view(): void
+    public function test_only_the_principal_and_curriculum_management_get_the_school_wide_dashboard(): void
     {
-        foreach ([Role::KepalaSekolah, Role::WakaKurikulum, Role::AdminKurikulum, Role::KoordinatorEkskul] as $role) {
+        foreach ([Role::KepalaSekolah, Role::WakaKurikulum, Role::AdminKurikulum] as $role) {
             $this->actingAs(User::factory()->withRoles($role)->create());
 
             $this->assertTrue(Livewire::test(Dashboard::class)->instance()->isPimpinanView(), "Expected {$role->value} to get the leadership view");
+        }
+    }
+
+    public function test_facilities_and_extracurricular_coordinators_do_not_receive_school_wide_teacher_data(): void
+    {
+        foreach ([Role::WakaSarpras, Role::KoordinatorEkskul] as $role) {
+            $this->actingAs(User::factory()->withRoles($role)->create());
+
+            $this->assertFalse(Livewire::test(Dashboard::class)->instance()->isPimpinanView(), "Expected {$role->value} to get the teacher dashboard");
         }
     }
 
@@ -172,5 +182,25 @@ class DashboardTest extends TestCase
         $substitutions = Livewire::test(Dashboard::class)->instance()->getMySubstitutionsToday();
 
         $this->assertCount(2, $substitutions);
+    }
+
+    public function test_teacher_dashboard_lists_todays_schedule_and_open_tasks(): void
+    {
+        $this->travelTo(Carbon::parse('2026-09-14 08:00:00'));
+
+        $teacher = User::factory()->create();
+        $schedule = Schedule::factory()->create([
+            'teacher_id' => $teacher->id,
+            'day_of_week' => SchoolDay::Senin,
+        ]);
+        $task = Task::factory()->create(['title' => 'Siapkan perangkat ajar', 'due_on' => '2026-09-16']);
+        $task->assignees()->attach($teacher, ['is_completed' => false]);
+
+        $this->actingAs($teacher);
+
+        $dashboard = Livewire::test(Dashboard::class);
+
+        $this->assertTrue($dashboard->instance()->getMyScheduleToday()->contains($schedule));
+        $this->assertSame('Siapkan perangkat ajar', $dashboard->instance()->getMyOpenTasks()->first()?->task->title);
     }
 }

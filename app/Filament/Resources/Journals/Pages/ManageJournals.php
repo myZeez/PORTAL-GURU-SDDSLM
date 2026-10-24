@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Journals\Pages;
 
+use App\Filament\Actions\SemesterReportAction;
 use App\Filament\Resources\Journals\JournalResource;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ManageRecords;
@@ -13,6 +14,7 @@ class ManageJournals extends ManageRecords
     protected function getHeaderActions(): array
     {
         return [
+            SemesterReportAction::forDate('reports.journals.pdf', 'Unduh PDF Jurnal'),
             CreateAction::make(),
         ];
     }

@@ -13,7 +13,7 @@ class MonitoringResultPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->isAdministrator() || $user->isPrincipal();
+        return $user->canReviewMonitoring();
     }
 
     public function view(User $user, MonitoringResult $monitoringResult): bool
@@ -23,22 +23,22 @@ class MonitoringResultPolicy
 
     public function create(User $user): bool
     {
-        return $user->isAdministrator();
+        return $user->isCurriculumManager();
     }
 
     public function update(User $user, MonitoringResult $monitoringResult): bool
     {
-        return $user->isAdministrator();
+        return $user->isCurriculumManager();
     }
 
     public function delete(User $user, MonitoringResult $monitoringResult): bool
     {
-        return $user->isAdministrator();
+        return $user->isCurriculumManager();
     }
 
     public function deleteAny(User $user): bool
     {
-        return $user->isAdministrator();
+        return $user->isCurriculumManager();
     }
 
     public function restore(User $user, MonitoringResult $monitoringResult): bool

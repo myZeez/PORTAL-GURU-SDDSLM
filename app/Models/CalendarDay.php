@@ -26,6 +26,77 @@ class CalendarDay extends Model
         static::creating(function (self $calendarDay): void {
             $calendarDay->created_by ??= auth()->id();
         });
+
+        static::saved(function (self $calendarDay): void {
+            if ($calendarDay->wasRecentlyCreated || $calendarDay->wasChanged(['status', 'notes'])) {
+                $calendarDay->logChange(
+                    $calendarDay->wasRecentlyCreated ? CalendarDayStatus::Efektif : $calendarDay->getOriginal('status'),
+                    $calendarDay->status,
+                );
+            }
+        });
+
+        static::deleted(function (self $calendarDay): void {
+            $calendarDay->logChange($calendarDay->status, CalendarDayStatus::Efektif);
+        });
+    }
+
+    /**
+     * Record a change to this date in the append-only history, whoever made it through
+     * the app (changes made with nobody signed in, such as seeding, are not logged).
+     */
+    private function logChange(CalendarDayStatus $before, CalendarDayStatus $after): void
+    {
+        if (auth()->id() === null) {
+            return;
+        }
+
+        CalendarDayLog::create([
+            'date' => $this->date,
+            'actor_id' => auth()->id(),
+            'before_status' => $before->value,
+            'after_status' => $after->value,
+            'notes' => $this->notes ?? '',
+        ]);
+    }
+
+    /**
+     * Mark a date with a status, or return it to a plain effective day (which removes the
+     * exception). Every change is written to the history with its explanation.
+     */
+    public static function markDate(string $date, CalendarDayStatus $status, string $notes): void
+    {
+        $existing = static::query()->whereDate('date', $date)->first();
+
+        if ($status === CalendarDayStatus::Efektif) {
+            if ($existing) {
+                $existing->notes = $notes;
+                $existing->saveQuietly();
+                $existing->delete();
+            }
+
+            return;
+        }
+
+        if ($existing) {
+            $existing->update(['status' => $status, 'notes' => $notes]);
+
+            return;
+        }
+
+        $semester = Semester::query()
+            ->whereDate('starts_on', '<=', $date)
+            ->whereDate('ends_on', '>=', $date)
+            ->first() ?? Semester::current();
+
+        abort_if($semester === null, 422, 'Belum ada semester untuk tanggal ini.');
+
+        static::create([
+            'semester_id' => $semester->id,
+            'date' => $date,
+            'status' => $status,
+            'notes' => $notes,
+        ]);
     }
 
     /**

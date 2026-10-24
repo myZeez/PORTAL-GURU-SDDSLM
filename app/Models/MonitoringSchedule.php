@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use App\Filament\Pages\Dashboard;
 use Carbon\Carbon;
 use Database\Factories\MonitoringScheduleFactory;
+use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -57,6 +59,12 @@ class MonitoringSchedule extends Model
             ->title('Monitoring administrasi kelas dijadwalkan')
             ->body("Kelas {$this->classroom->label} akan dimonitor pada {$this->date->translatedFormat('d F Y')}.")
             ->warning()
+            ->actions([
+                Action::make('open')
+                    ->label('Buka dasbor')
+                    ->url(Dashboard::getUrl())
+                    ->markAsRead(),
+            ])
             ->sendToDatabase($recipients);
     }
 

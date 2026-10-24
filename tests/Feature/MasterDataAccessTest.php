@@ -37,7 +37,7 @@ class MasterDataAccessTest extends TestCase
     }
 
     #[DataProvider('masterDataResources')]
-    public function test_administrators_can_open_master_data_pages(string $resource): void
+    public function test_curriculum_management_can_open_master_data_pages(string $resource): void
     {
         $administrator = User::factory()->withRoles(Role::WakaKurikulum)->create();
 
@@ -68,6 +68,15 @@ class MasterDataAccessTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_waka_sarpras_cannot_open_curriculum_master_data_pages(): void
+    {
+        $wakaSarpras = User::factory()->withRoles(Role::WakaSarpras)->create();
+
+        $this->actingAs($wakaSarpras)
+            ->get(SubjectResource::getUrl('index'))
+            ->assertForbidden();
+    }
+
     public function test_deactivated_staff_cannot_enter_the_portal(): void
     {
         $formerTeacher = User::factory()->inactive()->create();
@@ -77,18 +86,18 @@ class MasterDataAccessTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_administrators_cannot_delete_their_own_account(): void
+    public function test_super_admin_cannot_delete_their_own_account(): void
     {
-        $administrator = User::factory()->withRoles(Role::AdminKurikulum)->create();
+        $administrator = User::factory()->withRoles(Role::SuperAdmin)->create();
         $colleague = User::factory()->create();
 
         $this->assertFalse($administrator->can('delete', $administrator));
         $this->assertTrue($administrator->can('delete', $colleague));
     }
 
-    public function test_an_administrator_can_create_a_staff_account_with_roles(): void
+    public function test_super_admin_can_create_a_staff_account_with_roles(): void
     {
-        $this->actingAs(User::factory()->withRoles(Role::Developer)->create());
+        $this->actingAs(User::factory()->withRoles(Role::SuperAdmin)->create());
 
         Livewire::test(ManageUsers::class)
             ->callAction('create', data: [
@@ -106,7 +115,8 @@ class MasterDataAccessTest extends TestCase
 
         $this->assertSame('BRU', $staff->code);
         $this->assertTrue($staff->hasRole(Role::WakaSarpras));
-        $this->assertTrue($staff->isAdministrator());
+        $this->assertTrue($staff->isFacilitiesManager());
+        $this->assertFalse($staff->isCurriculumManager());
     }
 
     public function test_the_principal_does_not_get_a_create_button(): void

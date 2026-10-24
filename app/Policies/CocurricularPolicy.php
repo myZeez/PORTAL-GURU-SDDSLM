@@ -6,9 +6,9 @@ use App\Models\Cocurricular;
 use App\Models\User;
 
 /**
- * Submissions form a shared feed everyone can browse. Only administrators, and the
- * homeroom or assistant teacher (wali/pendamping) of the classroom in question, may
- * submit or edit a classroom's kokurikuler record.
+ * Submissions form a shared feed everyone can browse. Curriculum management and the
+ * homeroom or assistant teacher (wali/pendamping) may submit a classroom's record.
+ * Once submitted, only Super Admin may correct or remove it.
  */
 class CocurricularPolicy
 {
@@ -24,24 +24,24 @@ class CocurricularPolicy
 
     public function create(User $user): bool
     {
-        return $user->isAdministrator()
+        return $user->isCurriculumManager()
             || $user->homeroomClassroom()->exists()
             || $user->assistedClassroom()->exists();
     }
 
     public function update(User $user, Cocurricular $cocurricular): bool
     {
-        return $user->isAdministrator() || $this->teachesClassroom($user, $cocurricular);
+        return $user->isSuperAdmin();
     }
 
     public function delete(User $user, Cocurricular $cocurricular): bool
     {
-        return $user->isAdministrator() || $this->teachesClassroom($user, $cocurricular);
+        return $user->isSuperAdmin();
     }
 
     public function deleteAny(User $user): bool
     {
-        return $user->isAdministrator();
+        return $user->isSuperAdmin();
     }
 
     public function restore(User $user, Cocurricular $cocurricular): bool

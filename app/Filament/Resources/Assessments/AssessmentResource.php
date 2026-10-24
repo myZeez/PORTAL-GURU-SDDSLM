@@ -40,13 +40,13 @@ class AssessmentResource extends Resource
 
     /**
      * Every role only ever manages their own records here ("Input" applies even to
-     * administrators) — the principal is the one exception, reading everyone's.
+     * administrators) — the principal and Super Admin are the exceptions, reading everyone's.
      */
     public static function getEloquentQuery(): Builder
     {
         $query = parent::getEloquentQuery();
 
-        if (! auth()->user()->isPrincipal()) {
+        if (! auth()->user()->isPrincipal() && ! auth()->user()->isSuperAdmin()) {
             $query->where('teacher_id', auth()->id());
         }
 
@@ -115,7 +115,7 @@ class AssessmentResource extends Resource
                 TextColumn::make('teacher.name')
                     ->label('Guru')
                     ->searchable()
-                    ->visible(fn (): bool => auth()->user()->isPrincipal()),
+                    ->visible(fn (): bool => auth()->user()->isPrincipal() || auth()->user()->isSuperAdmin()),
             ])
             ->filters([
                 SelectFilter::make('classroom_id')

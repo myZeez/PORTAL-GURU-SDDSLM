@@ -6,7 +6,7 @@ use App\Models\Extracurricular;
 use App\Models\User;
 
 /**
- * Everyone can browse the extracurricular schedule; only administrators and the
+ * Everyone can browse the extracurricular schedule; only curriculum management and the
  * extracurricular coordinator (Koordinator Ekskul) manage it.
  */
 class ExtracurricularPolicy
@@ -23,22 +23,22 @@ class ExtracurricularPolicy
 
     public function create(User $user): bool
     {
-        return $user->isAdministrator() || $user->isEkskulCoordinator();
+        return $user->canManageExtracurriculars();
     }
 
     public function update(User $user, Extracurricular $extracurricular): bool
     {
-        return $user->isAdministrator() || $user->isEkskulCoordinator();
+        return $user->canManageExtracurriculars();
     }
 
     public function delete(User $user, Extracurricular $extracurricular): bool
     {
-        return $user->isAdministrator() || $user->isEkskulCoordinator();
+        return $user->canManageExtracurriculars();
     }
 
     public function deleteAny(User $user): bool
     {
-        return $user->isAdministrator() || $user->isEkskulCoordinator();
+        return $user->canManageExtracurriculars();
     }
 
     public function restore(User $user, Extracurricular $extracurricular): bool

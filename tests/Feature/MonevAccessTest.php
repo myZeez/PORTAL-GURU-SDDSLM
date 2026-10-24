@@ -2,9 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Enums\AttendanceStatus;
+use App\Enums\CalendarDayStatus;
 use App\Enums\Role;
 use App\Filament\Pages\Monev;
 use App\Models\Assessment;
+use App\Models\CalendarDay;
+use App\Models\Semester;
+use App\Models\TeacherAttendance;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -110,6 +115,36 @@ class MonevAccessTest extends TestCase
 
         $this->assertSame('kuning', $rows->first()['status']);
         $this->assertLessThan(80, $rows->first()['attendance_percentage']);
+    }
+
+    public function test_attendance_percentage_uses_weighted_statuses_and_excludes_school_holidays(): void
+    {
+        $this->travelTo(Carbon::parse('2026-09-30 12:00:00'));
+
+        $semester = Semester::factory()->active()->create();
+        $effectiveDates = collect(['2026-09-01', '2026-09-02', '2026-09-03', '2026-09-04']);
+
+        for ($date = Carbon::parse('2026-09-01'); $date->lte(Carbon::parse('2026-09-30')); $date->addDay()) {
+            if ($date->isWeekday() && ! $effectiveDates->contains($date->toDateString())) {
+                CalendarDay::factory()->create([
+                    'semester_id' => $semester->id,
+                    'date' => $date->toDateString(),
+                    'status' => CalendarDayStatus::Libur,
+                ]);
+            }
+        }
+
+        $teacher = User::factory()->create();
+        TeacherAttendance::factory()->create(['teacher_id' => $teacher->id, 'date' => '2026-09-01', 'status' => AttendanceStatus::Hadir]);
+        TeacherAttendance::factory()->create(['teacher_id' => $teacher->id, 'date' => '2026-09-02', 'status' => AttendanceStatus::PulangCepat, 'early_leave_reason' => 'Kontrol dokter']);
+        TeacherAttendance::factory()->create(['teacher_id' => $teacher->id, 'date' => '2026-09-03', 'status' => AttendanceStatus::Izin]);
+        TeacherAttendance::factory()->create(['teacher_id' => $teacher->id, 'date' => '2026-09-04', 'status' => AttendanceStatus::Alpa]);
+
+        $this->actingAs($teacher);
+
+        $rows = Livewire::test(Monev::class)->set('month', '2026-09')->instance()->getTeacherRows();
+
+        $this->assertSame(56, $rows->first()['attendance_percentage']);
     }
 
     /**

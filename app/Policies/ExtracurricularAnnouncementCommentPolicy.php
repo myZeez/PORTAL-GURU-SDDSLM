@@ -6,7 +6,7 @@ use App\Models\ExtracurricularAnnouncementComment;
 use App\Models\User;
 
 /**
- * Anyone signed in may join the discussion; only administrators, the ekskul
+ * Anyone signed in may join the discussion; only curriculum management, the ekskul
  * coordinator, or the comment's own author may remove it.
  */
 class ExtracurricularAnnouncementCommentPolicy
@@ -33,12 +33,12 @@ class ExtracurricularAnnouncementCommentPolicy
 
     public function delete(User $user, ExtracurricularAnnouncementComment $extracurricularAnnouncementComment): bool
     {
-        return $user->isAdministrator() || $user->isEkskulCoordinator() || $extracurricularAnnouncementComment->user_id === $user->id;
+        return $user->canManageExtracurriculars() || $extracurricularAnnouncementComment->user_id === $user->id;
     }
 
     public function deleteAny(User $user): bool
     {
-        return $user->isAdministrator() || $user->isEkskulCoordinator();
+        return $user->canManageExtracurriculars();
     }
 
     public function restore(User $user, ExtracurricularAnnouncementComment $extracurricularAnnouncementComment): bool

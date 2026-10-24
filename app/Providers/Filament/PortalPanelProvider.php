@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\AvatarProviders\InitialsAvatarProvider;
 use App\Filament\Pages\ChangePassword;
 use App\Http\Middleware\RequirePasswordChange;
 use Filament\FontProviders\LocalFontProvider;
@@ -40,6 +41,9 @@ class PortalPanelProvider extends PanelProvider
             ->brandLogoHeight('2.75rem')
             ->colors($this->colors())
             ->globalSearch(false)
+            ->defaultAvatarProvider(InitialsAvatarProvider::class)
+            ->databaseNotifications()
+            ->databaseNotificationsPolling('30s')
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
@@ -47,6 +51,12 @@ class PortalPanelProvider extends PanelProvider
             ->renderHook(
                 PanelsRenderHook::BODY_END,
                 fn (): string => auth()->check() ? view('filament.dock')->render() : '',
+            )
+            ->renderHook(
+                PanelsRenderHook::TOPBAR_START,
+                fn (): string => request()->routeIs('filament.portal.pages.dashboard')
+                    ? view('filament.dashboard-header-title')->render()
+                    : '',
             )
             ->middleware([
                 EncryptCookies::class,

@@ -2,7 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Enums\Role;
 use App\Filament\Pages\Menu;
+use App\Filament\Resources\Journals\JournalResource;
+use App\Filament\Resources\Substitutions\SubstitutionResource;
+use App\Filament\Resources\TeacherAttendances\TeacherAttendanceResource;
 use App\Filament\Resources\Users\UserResource;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -50,7 +54,7 @@ class PortalLayoutTest extends TestCase
             ], escape: false);
     }
 
-    public function test_the_module_map_lists_every_group_and_module(): void
+    public function test_the_module_map_hides_administrative_modules_from_a_plain_teacher(): void
     {
         $this->actingAs(User::factory()->create())
             ->get(Menu::getUrl())
@@ -58,10 +62,22 @@ class PortalLayoutTest extends TestCase
             ->assertSee('Saya')
             ->assertSee('Jadwal Saya')
             ->assertSee('Program & Layanan')
-            ->assertSee('Guru & Staf')
-            ->assertSee(UserResource::getUrl(), escape: false)
-            ->assertSee('Data Master')
+            ->assertDontSee(TeacherAttendanceResource::getUrl(), escape: false)
+            ->assertDontSee(JournalResource::getUrl(), escape: false)
+            ->assertDontSee(SubstitutionResource::getUrl(), escape: false)
+            ->assertDontSee(UserResource::getUrl(), escape: false)
+            ->assertDontSee('Data Master')
             ->assertSee('Monitoring')
             ->assertSee('Monev');
+    }
+
+    public function test_the_module_map_shows_master_data_to_curriculum_management(): void
+    {
+        $this->actingAs(User::factory()->withRoles(Role::AdminKurikulum)->create())
+            ->get(Menu::getUrl())
+            ->assertOk()
+            ->assertSee('Data Master')
+            ->assertSee(UserResource::getUrl(), escape: false)
+            ->assertSee(TeacherAttendanceResource::getUrl(), escape: false);
     }
 }

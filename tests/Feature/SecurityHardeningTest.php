@@ -116,7 +116,7 @@ class SecurityHardeningTest extends TestCase
         $this->actingAs($user);
 
         Livewire::test(MyProfile::class)
-            ->set('data.role', Role::Developer->value)
+            ->set('data.role', Role::WakaKurikulum->value)
             ->set('data.is_active', false)
             ->set('data.must_change_password', true)
             ->call('save');

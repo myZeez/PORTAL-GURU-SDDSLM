@@ -2,7 +2,6 @@
 
 namespace App\Filament\Pages;
 
-use App\Enums\AttendanceStatus;
 use App\Models\Assessment;
 use App\Models\Journal;
 use App\Models\Schedule;
@@ -20,7 +19,7 @@ use UnitEnum;
 
 /**
  * Monitoring & evaluasi: a read-only rollup of journal, attendance, assessment, and
- * supervision compliance. Leadership (administrators + principal) see every teacher;
+ * supervision compliance. Curriculum management and the principal see every teacher;
  * everyone else sees only their own row — see {@see self::isLeadership()}.
  */
 class Monev extends Page
@@ -58,7 +57,7 @@ class Monev extends Page
 
     public function isLeadership(): bool
     {
-        return auth()->user()->isAdministrator() || auth()->user()->isPrincipal();
+        return auth()->user()->canReviewMonitoring();
     }
 
     public function selectTeacher(int $teacherId): void
@@ -200,13 +199,13 @@ class Monev extends Page
             return 100;
         }
 
-        $hadirCount = TeacherAttendance::query()
+        $attendanceScore = TeacherAttendance::query()
             ->where('teacher_id', $teacher->id)
             ->whereIn('date', $fillableDates->map(fn (Carbon $date): string => $date->toDateString()))
-            ->where('status', AttendanceStatus::Hadir)
-            ->count();
+            ->get(['status'])
+            ->sum(fn (TeacherAttendance $attendance): int => $attendance->status->attendanceWeight());
 
-        return (int) round($hadirCount / $fillableDates->count() * 100);
+        return (int) round($attendanceScore / $fillableDates->count());
     }
 
     private function journalMissingToday(User $teacher): bool

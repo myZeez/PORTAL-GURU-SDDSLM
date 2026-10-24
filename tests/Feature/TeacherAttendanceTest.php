@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\AttendanceStatus;
 use App\Enums\CalendarDayStatus;
 use App\Models\CalendarDay;
 use App\Models\Semester;
@@ -76,5 +77,15 @@ class TeacherAttendanceTest extends TestCase
         ]);
 
         $this->assertFalse($attendance->is_late);
+    }
+
+    public function test_each_attendance_status_has_the_expected_credit_weight(): void
+    {
+        $this->assertSame(100, AttendanceStatus::Hadir->attendanceWeight());
+        $this->assertSame(75, AttendanceStatus::PulangCepat->attendanceWeight());
+        $this->assertSame(50, AttendanceStatus::Izin->attendanceWeight());
+        $this->assertSame(50, AttendanceStatus::Sakit->attendanceWeight());
+        $this->assertSame(0, AttendanceStatus::Cuti->attendanceWeight());
+        $this->assertSame(0, AttendanceStatus::Alpa->attendanceWeight());
     }
 }

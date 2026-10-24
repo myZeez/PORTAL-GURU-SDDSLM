@@ -6,8 +6,9 @@ use App\Models\ExtracurricularAttendance;
 use App\Models\User;
 
 /**
- * Every guru pendamping logs their own attendance ("Input" applies even to
- * administrators); administrators and the ekskul coordinator manage everyone's.
+ * Every guru pendamping logs their own attendance. Once submitted, it becomes a
+ * historical record: extracurricular management can review it, while only Super Admin
+ * may correct or remove it.
  */
 class ExtracurricularAttendancePolicy
 {
@@ -28,17 +29,17 @@ class ExtracurricularAttendancePolicy
 
     public function update(User $user, ExtracurricularAttendance $extracurricularAttendance): bool
     {
-        return $user->isAdministrator() || $user->isEkskulCoordinator() || $extracurricularAttendance->teacher_id === $user->id;
+        return $user->isSuperAdmin();
     }
 
     public function delete(User $user, ExtracurricularAttendance $extracurricularAttendance): bool
     {
-        return $user->isAdministrator() || $user->isEkskulCoordinator() || $extracurricularAttendance->teacher_id === $user->id;
+        return $user->isSuperAdmin();
     }
 
     public function deleteAny(User $user): bool
     {
-        return $user->isAdministrator() || $user->isEkskulCoordinator();
+        return $user->isSuperAdmin();
     }
 
     public function restore(User $user, ExtracurricularAttendance $extracurricularAttendance): bool

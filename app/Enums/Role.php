@@ -10,32 +10,32 @@ use Filament\Support\Contracts\HasLabel;
  */
 enum Role: string implements HasLabel
 {
+    case SuperAdmin = 'super_admin';
     case KepalaSekolah = 'kepala_sekolah';
     case WakaKurikulum = 'waka_kurikulum';
     case AdminKurikulum = 'admin_kurikulum';
     case WakaSarpras = 'waka_sarpras';
     case KoordinatorEkskul = 'koordinator_ekskul';
-    case Developer = 'developer';
 
     public function getLabel(): string
     {
         return match ($this) {
+            self::SuperAdmin => 'Super Admin',
             self::KepalaSekolah => 'Kepala Sekolah',
             self::WakaKurikulum => 'Waka Kurikulum',
             self::AdminKurikulum => 'Admin Kurikulum',
             self::WakaSarpras => 'Waka Sarpras',
             self::KoordinatorEkskul => 'Koordinator Ekskul',
-            self::Developer => 'Developer',
         };
     }
 
     /**
-     * Roles that administer the portal and manage its master data.
+     * Roles responsible for curriculum operations and related master data.
      *
      * @return list<self>
      */
-    public static function administrators(): array
+    public static function curriculumManagers(): array
     {
-        return [self::WakaKurikulum, self::AdminKurikulum, self::WakaSarpras, self::Developer];
+        return [self::WakaKurikulum, self::AdminKurikulum];
     }
 }

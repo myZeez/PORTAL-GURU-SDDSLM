@@ -44,6 +44,8 @@ class JournalSelf extends Page
 
     public ?int $editingId = null;
 
+    public ?int $detailId = null;
+
     public function mount(): void
     {
         if (! $this->isApplicable()) {
@@ -142,45 +144,38 @@ class JournalSelf extends Page
             $data[$count] ??= 0;
         }
 
-        // While editing, `date` and `schedule_id` are disabled (never change which slot
-        // a journal belongs to) and therefore absent from the dehydrated state — reuse
-        // the already-owner-verified record's values instead of trusting the submission.
         if ($this->editingId) {
-            $journal = Journal::query()
-                ->where('teacher_id', auth()->id())
-                ->find($this->editingId);
+            Notification::make()
+                ->warning()
+                ->title('Jurnal yang sudah tersimpan tidak dapat diubah.')
+                ->body('Hubungi Super Admin bila data ini perlu dikoreksi.')
+                ->send();
 
-            if (! $journal) {
-                Notification::make()->danger()->title('Jurnal tidak ditemukan.')->send();
+            $this->cancelEdit();
 
-                return;
-            }
-
-            if (! Journal::isFillableDate($journal->date)) {
-                Notification::make()
-                    ->warning()
-                    ->title('Tanggal ini bukan hari efektif, tidak perlu mengisi jurnal.')
-                    ->send();
-
-                return;
-            }
-
-            $journal->update(collect($data)->except(['schedule_id', 'date'])->all());
-        } else {
-            if (! Journal::isFillableDate(Carbon::parse($data['date']))) {
-                Notification::make()
-                    ->warning()
-                    ->title('Tanggal ini bukan hari efektif, tidak perlu mengisi jurnal.')
-                    ->send();
-
-                return;
-            }
-
-            Journal::updateOrCreate(
-                ['schedule_id' => $data['schedule_id'], 'date' => $data['date']],
-                [...$data, 'teacher_id' => auth()->id()],
-            );
+            return;
         }
+
+        if (! Journal::isFillableDate(Carbon::parse($data['date']))) {
+            Notification::make()
+                ->warning()
+                ->title('Tanggal ini bukan hari efektif, tidak perlu mengisi jurnal.')
+                ->send();
+
+            return;
+        }
+
+        if (Journal::query()->where('schedule_id', $data['schedule_id'])->whereDate('date', $data['date'])->exists()) {
+            Notification::make()
+                ->warning()
+                ->title('Jurnal untuk jadwal ini sudah tersimpan dan terkunci.')
+                ->body('Hubungi Super Admin bila data ini perlu dikoreksi.')
+                ->send();
+
+            return;
+        }
+
+        Journal::create([...$data, 'teacher_id' => auth()->id()]);
 
         $this->cancelEdit();
 
@@ -192,16 +187,11 @@ class JournalSelf extends Page
 
     public function edit(int $journalId): void
     {
-        $journal = Journal::query()
-            ->where('teacher_id', auth()->id())
-            ->find($journalId);
-
-        if (! $journal) {
-            return;
-        }
-
-        $this->editingId = $journal->id;
-        $this->form->fill($journal->attributesToArray());
+        Notification::make()
+            ->warning()
+            ->title('Jurnal yang sudah tersimpan tidak dapat diubah.')
+            ->body('Hubungi Super Admin bila data ini perlu dikoreksi.')
+            ->send();
     }
 
     public function cancelEdit(): void
@@ -212,21 +202,50 @@ class JournalSelf extends Page
 
     public function delete(int $journalId): void
     {
-        $journal = Journal::query()
-            ->where('teacher_id', auth()->id())
-            ->find($journalId);
+        Notification::make()
+            ->warning()
+            ->title('Jurnal yang sudah tersimpan tidak dapat dihapus.')
+            ->body('Hubungi Super Admin bila data ini perlu dikoreksi.')
+            ->send();
+    }
 
-        if (! $journal) {
+    /**
+     * Open a read-only detail view for one of the signed-in teacher's locked journals.
+     */
+    public function showDetail(int $journalId): void
+    {
+        $journalExists = Journal::query()
+            ->where('teacher_id', auth()->id())
+            ->whereKey($journalId)
+            ->exists();
+
+        if (! $journalExists) {
             return;
         }
 
-        $journal->delete();
+        $this->detailId = $journalId;
+    }
 
-        if ($this->editingId === $journalId) {
-            $this->cancelEdit();
+    public function closeDetail(): void
+    {
+        $this->detailId = null;
+    }
+
+    /**
+     * The selected journal is always scoped to the signed-in teacher, so a manipulated
+     * Livewire property cannot reveal another teacher's operational record.
+     */
+    public function getDetail(): ?Journal
+    {
+        if ($this->detailId === null) {
+            return null;
         }
 
-        Notification::make()->success()->title('Jurnal dihapus.')->send();
+        return Journal::query()
+            ->where('teacher_id', auth()->id())
+            ->whereKey($this->detailId)
+            ->with(['schedule.classroom', 'schedule.subject', 'schedule.timeSlot'])
+            ->first();
     }
 
     /**

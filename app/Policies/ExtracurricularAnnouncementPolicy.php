@@ -6,7 +6,7 @@ use App\Models\ExtracurricularAnnouncement;
 use App\Models\User;
 
 /**
- * Everyone reads the announcement wall; only administrators, the ekskul coordinator,
+ * Everyone reads the announcement wall; only curriculum management, the ekskul coordinator,
  * or the announcement's own author may post, edit, or remove one.
  */
 class ExtracurricularAnnouncementPolicy
@@ -23,7 +23,7 @@ class ExtracurricularAnnouncementPolicy
 
     public function create(User $user): bool
     {
-        return $user->isAdministrator() || $user->isEkskulCoordinator();
+        return $user->canManageExtracurriculars();
     }
 
     public function update(User $user, ExtracurricularAnnouncement $extracurricularAnnouncement): bool
@@ -38,7 +38,7 @@ class ExtracurricularAnnouncementPolicy
 
     public function deleteAny(User $user): bool
     {
-        return $user->isAdministrator() || $user->isEkskulCoordinator();
+        return $user->canManageExtracurriculars();
     }
 
     public function restore(User $user, ExtracurricularAnnouncement $extracurricularAnnouncement): bool
@@ -53,6 +53,6 @@ class ExtracurricularAnnouncementPolicy
 
     private function manages(User $user, ExtracurricularAnnouncement $extracurricularAnnouncement): bool
     {
-        return $user->isAdministrator() || $user->isEkskulCoordinator() || $extracurricularAnnouncement->created_by === $user->id;
+        return $user->canManageExtracurriculars() || $extracurricularAnnouncement->created_by === $user->id;
     }
 }

@@ -10,6 +10,7 @@ use App\Models\PidReservation;
 use App\Models\Subject;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -140,6 +141,45 @@ class PidReservationAccessTest extends TestCase
         $this->assertSame(1, $reservation->requestedBy->fresh()->notifications()->count());
     }
 
+    public function test_an_approval_records_who_approved_and_when(): void
+    {
+        Carbon::setTestNow('2026-10-26 09:30:00');
+
+        $reservation = PidReservation::factory()->create();
+        $approver = User::factory()->withRoles(Role::WakaSarpras)->create();
+
+        $this->actingAs($approver);
+
+        Livewire::test(ManagePidReservations::class)
+            ->callTableAction('approve', $reservation);
+
+        $reservation->refresh();
+
+        $this->assertSame($approver->id, $reservation->approved_by);
+        $this->assertTrue($reservation->approved_at->equalTo('2026-10-26 09:30:00'));
+
+        Carbon::setTestNow();
+    }
+
+    public function test_a_pending_reservation_has_no_approver_and_an_approved_one_cannot_be_approved_again(): void
+    {
+        $pending = PidReservation::factory()->create();
+        $approved = PidReservation::factory()->create(['starts_at' => '10:00:00', 'ends_at' => '11:00:00']);
+        $first = User::factory()->withRoles(Role::WakaSarpras)->create();
+        $approved->approve($first);
+
+        $this->assertNull($pending->approved_by);
+        $this->assertNull($pending->approved_at);
+
+        $this->actingAs(User::factory()->withRoles(Role::SuperAdmin)->create());
+
+        Livewire::test(ManagePidReservations::class)
+            ->assertTableActionHidden('approve', $approved)
+            ->assertTableActionVisible('approve', $pending);
+
+        $this->assertSame($first->id, $approved->refresh()->approved_by);
+    }
+
     public function test_other_administrators_cannot_approve_a_reservation(): void
     {
         $reservation = PidReservation::factory()->create();
@@ -161,5 +201,20 @@ class PidReservationAccessTest extends TestCase
             ->assertOk()
             ->assertSee('Keperluan Saya')
             ->assertDontSee('Keperluan Lain');
+    }
+
+    public function test_waka_kurikulum_only_sees_their_own_pid_reservations(): void
+    {
+        $wakaKurikulum = User::factory()->withRoles(Role::WakaKurikulum)->create();
+        $someoneElse = User::factory()->create();
+
+        PidReservation::factory()->create(['requested_by' => $wakaKurikulum->id, 'purpose' => 'PID Saya']);
+        PidReservation::factory()->create(['requested_by' => $someoneElse->id, 'purpose' => 'PID Orang Lain']);
+
+        $this->actingAs($wakaKurikulum)
+            ->get(PidReservationResource::getUrl())
+            ->assertOk()
+            ->assertSee('PID Saya')
+            ->assertDontSee('PID Orang Lain');
     }
 }

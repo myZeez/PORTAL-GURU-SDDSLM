@@ -40,14 +40,38 @@ class OutingClassResource extends Resource
     protected static ?string $pluralModelLabel = 'outing class';
 
     /**
-     * Everyone submits their own requests; administrators and the principal see every
+     * The number of requests waiting for a decision, shown only to the people who decide.
+     */
+    public static function getNavigationBadge(): ?string
+    {
+        if (! auth()->user()?->canApproveOutings()) {
+            return null;
+        }
+
+        $pending = OutingClass::query()->where('status', OutingStatus::Menunggu)->count();
+
+        return $pending > 0 ? (string) $pending : null;
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'warning';
+    }
+
+    public static function getNavigationBadgeTooltip(): ?string
+    {
+        return 'Pengajuan menunggu persetujuan';
+    }
+
+    /**
+     * Everyone submits their own requests; curriculum management and the principal see every
      * request, per the project scope's "Input" (self-only) versus "Lihat/setujui" split.
      */
     public static function getEloquentQuery(): Builder
     {
         $query = parent::getEloquentQuery();
 
-        if (! auth()->user()->isAdministrator() && ! auth()->user()->isPrincipal()) {
+        if (! auth()->user()->canReviewOutings()) {
             $query->where('requested_by', auth()->id());
         }
 
@@ -82,7 +106,7 @@ class OutingClassResource extends Resource
     {
         return $table
             ->defaultSort('date', 'desc')
-            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['classroom', 'requestedBy']))
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['classroom', 'requestedBy', 'approvedBy']))
             ->columns([
                 TextColumn::make('date')
                     ->label('Tanggal')
@@ -99,6 +123,11 @@ class OutingClassResource extends Resource
                 TextColumn::make('requestedBy.name')
                     ->label('Diajukan oleh')
                     ->searchable(),
+                TextColumn::make('approvedBy.name')
+                    ->label('Disetujui oleh')
+                    ->placeholder('—')
+                    ->description(fn (OutingClass $record): ?string => $record->approved_at?->translatedFormat('d M Y H:i'))
+                    ->toggleable(),
             ])
             ->filters([
                 SelectFilter::make('status')
@@ -113,7 +142,7 @@ class OutingClassResource extends Resource
                     ->visible(fn (OutingClass $record): bool => auth()->user()->can('update', $record) && $record->status === OutingStatus::Menunggu)
                     ->requiresConfirmation()
                     ->action(function (OutingClass $record): void {
-                        $record->update(['status' => OutingStatus::Disetujui]);
+                        $record->approve(auth()->user());
 
                         Notification::make()->success()->title('Outing class disetujui.')->send();
 
@@ -121,6 +150,12 @@ class OutingClassResource extends Resource
                             ->title('Pengajuan outing class disetujui')
                             ->body("{$record->classroom->label} — {$record->destination}")
                             ->success()
+                            ->actions([
+                                Action::make('open')
+                                    ->label('Lihat pengajuan')
+                                    ->url(self::getUrl())
+                                    ->markAsRead(),
+                            ])
                             ->sendToDatabase($record->requestedBy);
                     }),
                 EditAction::make(),

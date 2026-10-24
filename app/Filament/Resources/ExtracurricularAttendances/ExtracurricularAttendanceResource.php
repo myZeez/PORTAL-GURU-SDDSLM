@@ -40,14 +40,14 @@ class ExtracurricularAttendanceResource extends Resource
 
     /**
      * Every guru pendamping only ever logs their own attendance ("Input" applies even to
-     * administrators) — the principal and ekskul coordinator are the exception, reading
-     * everyone's.
+     * curriculum management) — the principal, extracurricular management, and Super
+     * Admin are the exception, reading everyone's.
      */
     public static function getEloquentQuery(): Builder
     {
         $query = parent::getEloquentQuery();
 
-        if (! auth()->user()->isPrincipal() && ! auth()->user()->isEkskulCoordinator()) {
+        if (! auth()->user()->isPrincipal() && ! auth()->user()->isSuperAdmin() && ! auth()->user()->canManageExtracurriculars()) {
             $query->where('teacher_id', auth()->id());
         }
 
@@ -93,7 +93,7 @@ class ExtracurricularAttendanceResource extends Resource
                 TextColumn::make('teacher.name')
                     ->label('Guru')
                     ->searchable()
-                    ->visible(fn (): bool => auth()->user()->isPrincipal() || auth()->user()->isEkskulCoordinator()),
+                    ->visible(fn (): bool => auth()->user()->isPrincipal() || auth()->user()->isSuperAdmin() || auth()->user()->canManageExtracurriculars()),
             ])
             ->filters([
                 SelectFilter::make('status')
@@ -115,7 +115,7 @@ class ExtracurricularAttendanceResource extends Resource
 
     /**
      * Extracurriculars meeting on the given date's day of week, restricted to the ones
-     * the signed-in teacher accompanies (unless they administer the module).
+     * the signed-in teacher accompanies (unless they manage the module).
      *
      * @return array<int, string>
      */
@@ -130,7 +130,7 @@ class ExtracurricularAttendanceResource extends Resource
         return Extracurricular::query()
             ->where('day', $day)
             ->when(
-                ! auth()->user()->isAdministrator() && ! auth()->user()->isEkskulCoordinator(),
+                ! auth()->user()->canManageExtracurriculars(),
                 fn (Builder $query): Builder => $query->whereRelation('assistantTeachers', 'users.id', auth()->id()),
             )
             ->get()

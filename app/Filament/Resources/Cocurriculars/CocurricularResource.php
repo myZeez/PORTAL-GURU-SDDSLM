@@ -55,7 +55,7 @@ class CocurricularResource extends Resource
                     ->relationship(
                         'classroom',
                         'code',
-                        modifyQueryUsing: fn (Builder $query): Builder => auth()->user()->isAdministrator()
+                        modifyQueryUsing: fn (Builder $query): Builder => auth()->user()->isCurriculumManager()
                             ? $query
                             : $query->where(fn (Builder $query): Builder => $query
                                 ->where('homeroom_teacher_id', auth()->id())

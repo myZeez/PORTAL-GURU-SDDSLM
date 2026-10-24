@@ -12,11 +12,14 @@ use Filament\Models\Contracts\HasAvatar;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 #[Fillable([
     'code', 'name', 'position', 'email', 'password', 'role', 'is_active', 'must_change_password',
@@ -71,7 +74,36 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
      */
     public function getFilamentAvatarUrl(): ?string
     {
-        return $this->photo_path ? Storage::disk('public')->url($this->photo_path) : null;
+        if (! $this->photo_path || ! Storage::disk('public')->exists($this->photo_path)) {
+            return null;
+        }
+
+        return route('avatars.show', ['user' => $this, 'v' => $this->updated_at?->timestamp]);
+    }
+
+    /**
+     * The one or two letters shown when no photo is available, e.g. "KF" for
+     * "Kiki Fauziah, S.Si., M.Pd., Gr.".
+     *
+     * @return Attribute<string, never>
+     */
+    protected function initials(): Attribute
+    {
+        return Attribute::get(fn (): string => self::initialsFor($this->name));
+    }
+
+    /**
+     * Build initials from a full name, ignoring academic degrees after the first comma and
+     * honorifics such as "Dr." or "H.".
+     */
+    public static function initialsFor(string $name): string
+    {
+        $words = collect(preg_split('/\s+/', trim(Str::before($name, ','))) ?: [])
+            ->filter(fn (string $word): bool => $word !== '' && ! preg_match('/^(dr|drs|dra|hj?|ir|prof)\.?$/i', $word))
+            ->take(2)
+            ->map(fn (string $word): string => Str::upper(Str::substr(preg_replace('/^[^\p{L}\p{N}]+/u', '', $word) ?? '', 0, 1)));
+
+        return $words->join('') ?: '?';
     }
 
     /**
@@ -83,11 +115,19 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
     }
 
     /**
-     * Determine whether the user administers the portal (Waka Kurikulum, Admin Kurikulum, Developer).
+     * Determine whether the user is trusted to make exceptional corrections to records.
      */
-    public function isAdministrator(): bool
+    public function isSuperAdmin(): bool
     {
-        return $this->hasRole(...Role::administrators());
+        return $this->hasRole(Role::SuperAdmin);
+    }
+
+    /**
+     * Determine whether the user manages curriculum operations and related master data.
+     */
+    public function isCurriculumManager(): bool
+    {
+        return $this->isSuperAdmin() || $this->hasRole(...Role::curriculumManagers());
     }
 
     /**
@@ -105,6 +145,146 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
     public function isEkskulCoordinator(): bool
     {
         return $this->hasRole(Role::KoordinatorEkskul);
+    }
+
+    /**
+     * Determine whether the user is responsible for facilities and PID reservations.
+     */
+    public function isFacilitiesManager(): bool
+    {
+        return $this->isSuperAdmin() || $this->hasRole(Role::WakaSarpras);
+    }
+
+    /**
+     * Determine whether the user receives the school-wide dashboard briefing.
+     *
+     * Facilities and extracurricular coordinators use the teacher dashboard. Their
+     * additional responsibilities do not grant access to attendance, journal, or
+     * workload information belonging to every teacher.
+     */
+    public function isSchoolLeader(): bool
+    {
+        return $this->isPrincipal()
+            || $this->isSuperAdmin()
+            || $this->isCurriculumManager();
+    }
+
+    /**
+     * Determine whether the user may review all outing-class submissions.
+     */
+    public function canReviewOutings(): bool
+    {
+        return $this->isPrincipal() || $this->isCurriculumManager();
+    }
+
+    /**
+     * Determine whether the user may review all PID reservations.
+     */
+    public function canReviewPidReservations(): bool
+    {
+        return $this->isPrincipal() || $this->isFacilitiesManager();
+    }
+
+    /**
+     * Determine whether the user decides on outing-class requests: Waka Kurikulum, or
+     * Super Admin as the exceptional fallback.
+     */
+    public function canApproveOutings(): bool
+    {
+        return $this->isSuperAdmin() || $this->hasRole(Role::WakaKurikulum);
+    }
+
+    /**
+     * Determine whether the user decides on PID reservations.
+     */
+    public function canApprovePidReservations(): bool
+    {
+        return $this->isFacilitiesManager();
+    }
+
+    /**
+     * Active users who decide on outing-class requests.
+     *
+     * @return EloquentCollection<int, self>
+     */
+    public static function outingApprovers(): EloquentCollection
+    {
+        return static::query()->where('is_active', true)->get()
+            ->filter(fn (self $user): bool => $user->canApproveOutings())
+            ->values();
+    }
+
+    /**
+     * Active users who decide on PID reservations.
+     *
+     * @return EloquentCollection<int, self>
+     */
+    public static function pidReservationApprovers(): EloquentCollection
+    {
+        return static::query()->where('is_active', true)->get()
+            ->filter(fn (self $user): bool => $user->canApprovePidReservations())
+            ->values();
+    }
+
+    /**
+     * Determine whether the user manages other teachers' attendance: corrects records,
+     * fills missing days on a teacher's behalf, and reopens a closed date.
+     */
+    public function canManageAttendance(): bool
+    {
+        return $this->isSuperAdmin() || $this->hasRole(Role::WakaKurikulum);
+    }
+
+    /**
+     * Determine whether the user manages teacher performance: sets the weights and target,
+     * saves each period, and records findings and follow-ups. Waka Kurikulum, with Super
+     * Admin as the fallback.
+     */
+    public function canManagePerformance(): bool
+    {
+        return $this->isSuperAdmin() || $this->hasRole(Role::WakaKurikulum);
+    }
+
+    /**
+     * Determine whether the user may see every teacher's performance (the principal reads
+     * it for monitoring). Everyone else sees only their own.
+     */
+    public function canReviewPerformance(): bool
+    {
+        return $this->isPrincipal() || $this->canManagePerformance();
+    }
+
+    /**
+     * Determine whether the user may see SIMPATI completion for every class.
+     */
+    public function canMonitorSimpati(): bool
+    {
+        return $this->isPrincipal() || $this->isCurriculumManager() || $this->isEkskulCoordinator();
+    }
+
+    /**
+     * Determine whether the user may tick the SIMPATI checklist of any class, not only the
+     * class they assist.
+     */
+    public function canManageAllSimpati(): bool
+    {
+        return $this->isSuperAdmin() || $this->hasRole(Role::WakaKurikulum);
+    }
+
+    /**
+     * Determine whether the user may manage extracurricular programs and records.
+     */
+    public function canManageExtracurriculars(): bool
+    {
+        return $this->isCurriculumManager() || $this->isEkskulCoordinator();
+    }
+
+    /**
+     * Determine whether the user may review monitoring data across all teachers.
+     */
+    public function canReviewMonitoring(): bool
+    {
+        return $this->isPrincipal() || $this->isCurriculumManager();
     }
 
     /**

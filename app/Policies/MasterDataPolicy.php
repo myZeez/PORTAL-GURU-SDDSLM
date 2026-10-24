@@ -6,7 +6,7 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Master data is managed by administrators (Waka Kurikulum, Admin Kurikulum, Developer) and
+ * Master data is managed by Waka Kurikulum and Admin Kurikulum and
  * can be read by the principal. Every ability Filament may ask about is declared explicitly,
  * so nothing is allowed by accident.
  */
@@ -17,7 +17,7 @@ abstract class MasterDataPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->isAdministrator() || $user->isPrincipal();
+        return $user->isCurriculumManager() || $user->isPrincipal();
     }
 
     /**
@@ -33,7 +33,7 @@ abstract class MasterDataPolicy
      */
     public function create(User $user): bool
     {
-        return $user->isAdministrator();
+        return $user->isCurriculumManager();
     }
 
     /**
@@ -41,7 +41,7 @@ abstract class MasterDataPolicy
      */
     public function update(User $user, Model $model): bool
     {
-        return $user->isAdministrator();
+        return $user->isCurriculumManager();
     }
 
     /**
@@ -49,7 +49,7 @@ abstract class MasterDataPolicy
      */
     public function delete(User $user, Model $model): bool
     {
-        return $user->isAdministrator();
+        return $user->isCurriculumManager();
     }
 
     /**
@@ -57,7 +57,7 @@ abstract class MasterDataPolicy
      */
     public function deleteAny(User $user): bool
     {
-        return $user->isAdministrator();
+        return $user->isCurriculumManager();
     }
 
     /**

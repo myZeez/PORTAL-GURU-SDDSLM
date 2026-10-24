@@ -45,7 +45,7 @@ class JournalAccessTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_an_administrator_can_record_a_journal_on_behalf_of_a_teacher(): void
+    public function test_super_admin_can_record_a_journal_on_behalf_of_a_teacher(): void
     {
         $teacher = User::factory()->create();
         $schedule = Schedule::factory()->create([
@@ -53,7 +53,7 @@ class JournalAccessTest extends TestCase
             'day_of_week' => SchoolDay::Senin,
         ]);
 
-        $this->actingAs(User::factory()->withRoles(Role::AdminKurikulum)->create());
+        $this->actingAs(User::factory()->withRoles(Role::SuperAdmin)->create());
 
         Livewire::test(ManageJournals::class)
             ->callAction('create', data: [
@@ -180,7 +180,7 @@ class JournalAccessTest extends TestCase
         ]);
     }
 
-    public function test_a_teacher_can_edit_their_own_journal_entry(): void
+    public function test_a_teacher_cannot_edit_their_own_journal_entry_after_saving(): void
     {
         $this->travelTo(Carbon::parse('2026-09-14 09:00:00'));
 
@@ -200,12 +200,9 @@ class JournalAccessTest extends TestCase
 
         Livewire::test(JournalSelf::class)
             ->call('edit', $journal->id)
-            ->assertSet('editingId', $journal->id)
-            ->fillForm(['topic' => 'Materi sudah direvisi'])
-            ->call('save')
-            ->assertHasNoFormErrors();
+            ->assertSet('editingId', null);
 
-        $this->assertSame('Materi sudah direvisi', $journal->refresh()->topic);
+        $this->assertSame('Materi awal', $journal->refresh()->topic);
     }
 
     public function test_a_teacher_cannot_edit_someone_elses_journal_entry(): void
@@ -224,7 +221,39 @@ class JournalAccessTest extends TestCase
             ->assertSet('editingId', null);
     }
 
-    public function test_resubmitting_the_same_slot_updates_instead_of_duplicating(): void
+    public function test_a_teacher_can_view_details_of_their_own_locked_journal_entry(): void
+    {
+        $teacher = User::factory()->create();
+        $schedule = Schedule::factory()->create(['teacher_id' => $teacher->id]);
+        $journal = Journal::factory()->create([
+            'schedule_id' => $schedule->id,
+            'teacher_id' => $teacher->id,
+            'topic' => 'Pecahan sederhana',
+        ]);
+
+        $this->actingAs($teacher);
+
+        $component = Livewire::test(JournalSelf::class)
+            ->call('showDetail', $journal->id)
+            ->assertSet('detailId', $journal->id);
+
+        $this->assertSame('Pecahan sederhana', $component->instance()->getDetail()?->topic);
+    }
+
+    public function test_a_teacher_cannot_view_another_teachers_journal_detail(): void
+    {
+        $owner = User::factory()->create();
+        $schedule = Schedule::factory()->create(['teacher_id' => $owner->id]);
+        $journal = Journal::factory()->create(['schedule_id' => $schedule->id, 'teacher_id' => $owner->id]);
+
+        $this->actingAs(User::factory()->create());
+
+        Livewire::test(JournalSelf::class)
+            ->call('showDetail', $journal->id)
+            ->assertSet('detailId', null);
+    }
+
+    public function test_resubmitting_the_same_slot_keeps_the_original_journal(): void
     {
         $this->travelTo(Carbon::parse('2026-09-14 09:00:00'));
 
@@ -246,6 +275,6 @@ class JournalAccessTest extends TestCase
             ->assertHasNoFormErrors();
 
         $this->assertSame(1, Journal::query()->where('schedule_id', $schedule->id)->count());
-        $this->assertDatabaseHas('journals', ['schedule_id' => $schedule->id, 'topic' => 'Versi kedua']);
+        $this->assertDatabaseHas('journals', ['schedule_id' => $schedule->id, 'topic' => 'Versi pertama']);
     }
 }

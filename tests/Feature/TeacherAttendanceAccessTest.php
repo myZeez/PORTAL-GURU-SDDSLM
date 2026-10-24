@@ -43,12 +43,21 @@ class TeacherAttendanceAccessTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_an_administrator_can_record_attendance_for_another_teacher(): void
+    public function test_curriculum_management_cannot_record_attendance_for_another_teacher(): void
+    {
+        $teacher = User::factory()->create();
+        $curriculumManager = User::factory()->withRoles(Role::AdminKurikulum)->create();
+
+        $this->assertFalse($curriculumManager->can('create', TeacherAttendance::class));
+        $this->assertFalse($curriculumManager->can('update', TeacherAttendance::factory()->create(['teacher_id' => $teacher->id])));
+    }
+
+    public function test_super_admin_can_correct_attendance_for_another_teacher(): void
     {
         $this->travelTo(Carbon::parse('2026-09-14 07:00:00'));
 
         $teacher = User::factory()->create();
-        $this->actingAs(User::factory()->withRoles(Role::AdminKurikulum)->create());
+        $this->actingAs(User::factory()->withRoles(Role::SuperAdmin)->create());
 
         Livewire::test(ManageTeacherAttendances::class)
             ->callAction('create', data: [
@@ -56,6 +65,7 @@ class TeacherAttendanceAccessTest extends TestCase
                 'date' => '2026-09-14',
                 'status' => AttendanceStatus::Sakit->value,
                 'notes' => 'Demam',
+                'change_reason' => 'Guru tidak sempat mengisi, diisi sesuai surat dokter.',
             ])
             ->assertHasNoActionErrors();
 
@@ -63,6 +73,22 @@ class TeacherAttendanceAccessTest extends TestCase
             'teacher_id' => $teacher->id,
             'status' => AttendanceStatus::Sakit->value,
         ]);
+    }
+
+    public function test_administrators_can_focus_the_attendance_table_on_a_selected_date(): void
+    {
+        $this->travelTo(Carbon::parse('2026-09-14 07:00:00'));
+
+        $selectedAttendance = TeacherAttendance::factory()->create(['date' => '2026-09-10']);
+        $otherAttendance = TeacherAttendance::factory()->create(['date' => '2026-09-11']);
+        $this->actingAs(User::factory()->withRoles(Role::AdminKurikulum)->create());
+
+        Livewire::test(ManageTeacherAttendances::class)
+            ->assertSet('selectedDate', '2026-09-14')
+            ->call('selectDate', '2026-09-10')
+            ->assertSet('selectedDate', '2026-09-10')
+            ->assertCanSeeTableRecords([$selectedAttendance])
+            ->assertCanNotSeeTableRecords([$otherAttendance]);
     }
 
     public function test_any_non_principal_teacher_can_open_absensi_saya(): void
@@ -99,7 +125,48 @@ class TeacherAttendanceAccessTest extends TestCase
         ]);
     }
 
-    public function test_filling_again_the_same_day_updates_instead_of_duplicating(): void
+    public function test_pulang_cepat_requires_a_reason_and_saves_it_for_the_report(): void
+    {
+        $this->travelTo(Carbon::parse('2026-09-14 07:00:00'));
+
+        $teacher = User::factory()->create();
+        $this->actingAs($teacher);
+
+        Livewire::test(AttendanceSelf::class)
+            ->fillForm(['status' => AttendanceStatus::PulangCepat->value])
+            ->call('save')
+            ->assertHasFormErrors(['early_leave_reason']);
+
+        Livewire::test(AttendanceSelf::class)
+            ->fillForm([
+                'status' => AttendanceStatus::PulangCepat->value,
+                'early_leave_reason' => 'Kontrol dokter',
+            ])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertDatabaseHas('teacher_attendances', [
+            'teacher_id' => $teacher->id,
+            'date' => '2026-09-14',
+            'status' => AttendanceStatus::PulangCepat->value,
+            'early_leave_reason' => 'Kontrol dokter',
+        ]);
+    }
+
+    public function test_a_teacher_can_select_a_date_from_the_current_month(): void
+    {
+        $this->travelTo(Carbon::parse('2026-09-14 07:00:00'));
+
+        $teacher = User::factory()->create();
+        $this->actingAs($teacher);
+
+        Livewire::test(AttendanceSelf::class)
+            ->assertSet('selectedDate', '2026-09-14')
+            ->call('selectDate', '2026-09-10')
+            ->assertSet('selectedDate', '2026-09-10');
+    }
+
+    public function test_filling_again_the_same_day_keeps_the_original_attendance(): void
     {
         $this->travelTo(Carbon::parse('2026-09-14 07:00:00'));
 
@@ -118,7 +185,7 @@ class TeacherAttendanceAccessTest extends TestCase
         $this->assertSame(1, TeacherAttendance::query()->where('teacher_id', $teacher->id)->count());
         $this->assertDatabaseHas('teacher_attendances', [
             'teacher_id' => $teacher->id,
-            'status' => AttendanceStatus::Sakit->value,
+            'status' => AttendanceStatus::Hadir->value,
         ]);
     }
 

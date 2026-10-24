@@ -65,7 +65,10 @@ class CalendarDayResource extends Resource
                     ->preload(),
                 Textarea::make('notes')
                     ->label('Keterangan')
+                    ->helperText('Wajib. Penjelasan ini tercatat di riwayat perubahan kalender.')
                     ->rows(2)
+                    ->required()
+                    ->maxLength(500)
                     ->columnSpanFull(),
             ]);
     }

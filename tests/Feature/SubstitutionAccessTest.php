@@ -44,7 +44,7 @@ class SubstitutionAccessTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_an_administrator_can_record_a_substitution_on_behalf_of_a_teacher(): void
+    public function test_super_admin_can_record_a_substitution_on_behalf_of_a_teacher(): void
     {
         $originalTeacher = User::factory()->create();
         $substitute = User::factory()->create();
@@ -53,7 +53,7 @@ class SubstitutionAccessTest extends TestCase
             'day_of_week' => SchoolDay::Senin,
         ]);
 
-        $this->actingAs(User::factory()->withRoles(Role::AdminKurikulum)->create());
+        $this->actingAs(User::factory()->withRoles(Role::SuperAdmin)->create());
 
         Livewire::test(ManageSubstitutions::class)
             ->callAction('create', data: [

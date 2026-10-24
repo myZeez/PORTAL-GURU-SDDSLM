@@ -3,8 +3,11 @@
 namespace App\Models;
 
 use App\Enums\OutingStatus;
+use App\Filament\Resources\OutingClasses\OutingClassResource;
 use Carbon\Carbon;
 use Database\Factories\OutingClassFactory;
+use Filament\Actions\Action;
+use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -23,6 +26,36 @@ class OutingClass extends Model
             $outing->requested_by ??= auth()->id();
             $outing->status ??= OutingStatus::Menunggu;
         });
+
+        static::created(function (self $outing): void {
+            $outing->notifyApprovers();
+        });
+    }
+
+    /**
+     * Tell everyone who can approve outing classes that a request is waiting for them.
+     */
+    private function notifyApprovers(): void
+    {
+        $recipients = User::outingApprovers()->reject(fn (User $user): bool => $user->id === $this->requested_by);
+
+        if ($recipients->isEmpty()) {
+            return;
+        }
+
+        $this->loadMissing('classroom', 'requestedBy');
+
+        Notification::make()
+            ->title('Pengajuan outing class menunggu persetujuan')
+            ->body("{$this->classroom->label} — {$this->destination} pada {$this->date->translatedFormat('d F Y')}, diajukan oleh {$this->requestedBy?->name}.")
+            ->warning()
+            ->actions([
+                Action::make('review')
+                    ->label('Tinjau pengajuan')
+                    ->url(OutingClassResource::getUrl())
+                    ->markAsRead(),
+            ])
+            ->sendToDatabase($recipients);
     }
 
     /**
@@ -34,7 +67,21 @@ class OutingClass extends Model
     {
         return [
             'status' => OutingStatus::class,
+            'approved_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Approve a pending request and record who approved it and when. The approver and the
+     * time are not mass-assignable, so this is the only way they get written.
+     */
+    public function approve(User $approver): void
+    {
+        $this->forceFill([
+            'status' => OutingStatus::Disetujui,
+            'approved_by' => $approver->id,
+            'approved_at' => now(),
+        ])->save();
     }
 
     /**
@@ -71,5 +118,15 @@ class OutingClass extends Model
     public function requestedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'requested_by');
+    }
+
+    /**
+     * Get the user who approved this request.
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function approvedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by');
     }
 }

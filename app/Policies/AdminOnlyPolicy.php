@@ -7,14 +7,14 @@ use Illuminate\Database\Eloquent\Model;
 
 /**
  * Some modules (Manajemen Tugas: tasks and additional duties) are managed exclusively by
- * administrators — unlike master data, not even the principal gets read access, since
+ * curriculum management — unlike master data, not even the principal gets read access, since
  * these are internal admin-to-teacher tools rather than something requiring oversight.
  */
 abstract class AdminOnlyPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->isAdministrator();
+        return $user->isCurriculumManager();
     }
 
     public function view(User $user, Model $model): bool
@@ -24,22 +24,22 @@ abstract class AdminOnlyPolicy
 
     public function create(User $user): bool
     {
-        return $user->isAdministrator();
+        return $user->isCurriculumManager();
     }
 
     public function update(User $user, Model $model): bool
     {
-        return $user->isAdministrator();
+        return $user->isCurriculumManager();
     }
 
     public function delete(User $user, Model $model): bool
     {
-        return $user->isAdministrator();
+        return $user->isCurriculumManager();
     }
 
     public function deleteAny(User $user): bool
     {
-        return $user->isAdministrator();
+        return $user->isCurriculumManager();
     }
 
     public function restore(User $user, Model $model): bool

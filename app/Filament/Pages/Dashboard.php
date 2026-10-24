@@ -7,20 +7,25 @@ use App\Enums\Role;
 use App\Enums\SchoolDay;
 use App\Models\AdditionalDuty;
 use App\Models\CalendarDay;
+use App\Models\Classroom;
 use App\Models\Journal;
 use App\Models\Schedule;
 use App\Models\Semester;
+use App\Models\SimpatiCheck;
 use App\Models\Substitution;
+use App\Models\TaskAssignee;
 use App\Models\TeacherAttendance;
+use App\Models\TimeSlot;
 use App\Models\User;
 use Filament\Pages\Dashboard as BaseDashboard;
+use Filament\Support\Enums\Width;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 
 /**
  * Replaces Filament's default dashboard with a role-aware daily briefing: a leadership
- * view (Kepala Sekolah, Waka Kurikulum, Admin Kurikulum, Koordinator Ekskul) summarising
+ * view (Kepala Sekolah and designated coordinators) summarising
  * today's attendance/journal/substitution activity and workload, or a teacher view
  * reminding them what's still outstanding today. The full interactive weekly matrix
  * already lives on its own "Matriks Jadwal" page, so this links to it rather than
@@ -30,11 +35,18 @@ class Dashboard extends BaseDashboard
 {
     protected string $view = 'filament.pages.dashboard';
 
+    protected Width|string|null $maxContentWidth = Width::SevenExtraLarge;
+
+    public function getHeading(): null
+    {
+        return null;
+    }
+
     public function isPimpinanView(): bool
     {
         $user = auth()->user();
 
-        return $user->isPrincipal() || $user->isAdministrator() || $user->hasRole(Role::KoordinatorEkskul);
+        return $user->isSchoolLeader();
     }
 
     public function getGreeting(): string
@@ -59,11 +71,41 @@ class Dashboard extends BaseDashboard
     {
         $today = Carbon::today();
 
+        $status = CalendarDay::statusFor($today);
+
         if (SchoolDay::tryFrom($today->dayOfWeekIso) === null) {
-            return CalendarDayStatus::Libur;
+            return $status === CalendarDayStatus::Efektif ? CalendarDayStatus::Libur : $status;
         }
 
-        return CalendarDay::statusFor($today);
+        return $status;
+    }
+
+    /**
+     * Whether the signed-in user sees the school-wide SIMPATI progress: Waka Kurikulum and
+     * the other curriculum managers, the principal, and the extracurricular coordinator.
+     */
+    public function canSeeSimpati(): bool
+    {
+        return auth()->user()->canMonitorSimpati();
+    }
+
+    /**
+     * Today's SIMPATI completion across every class, read from the same checklist the
+     * pendamping tick.
+     *
+     * @return array{required: bool, total: int, filled: int, missing: int, percentage: int, unfilled: Collection<int, Classroom>}
+     */
+    public function getSimpatiSummary(): array
+    {
+        return SimpatiCheck::summaryFor(Carbon::today());
+    }
+
+    /**
+     * @return array{filled: int, possible: int, percentage: int}
+     */
+    public function getSimpatiMonthSummary(): array
+    {
+        return SimpatiCheck::monthlySummaryFor(Carbon::today());
     }
 
     /**
@@ -85,9 +127,11 @@ class Dashboard extends BaseDashboard
 
         return [
             'hadir' => $counts->get('hadir', 0),
+            'pulang_cepat' => $counts->get('pulang_cepat', 0),
             'izin' => $counts->get('izin', 0),
             'sakit' => $counts->get('sakit', 0),
             'cuti' => $counts->get('cuti', 0),
+            'alpa' => $counts->get('alpa', 0),
             'belum_mengisi' => max(0, $expected - $counts->sum()),
         ];
     }
@@ -222,5 +266,43 @@ class Dashboard extends BaseDashboard
                 ->orWhereHas('schedule', fn ($query) => $query->where('teacher_id', auth()->id())))
             ->with(['schedule.classroom', 'schedule.subject', 'schedule.teacher', 'substituteTeacher'])
             ->get();
+    }
+
+    /**
+     * The signed-in teacher's own scheduled slots today, including a slot that was
+     * assigned to a substitute so the teacher can still see the daily context.
+     *
+     * @return Collection<int, Schedule>
+     */
+    public function getMyScheduleToday(): Collection
+    {
+        return Schedule::query()
+            ->where('teacher_id', auth()->id())
+            ->where('day_of_week', Carbon::today()->dayOfWeekIso)
+            ->with(['classroom', 'subject', 'timeSlot'])
+            ->orderBy(
+                TimeSlot::query()
+                    ->select('starts_at')
+                    ->whereColumn('time_slots.id', 'schedules.time_slot_id'),
+            )
+            ->get();
+    }
+
+    /**
+     * Unfinished assignments for the signed-in teacher, with the nearest deadline
+     * shown first on the daily dashboard.
+     *
+     * @return Collection<int, TaskAssignee>
+     */
+    public function getMyOpenTasks(): Collection
+    {
+        return TaskAssignee::query()
+            ->where('user_id', auth()->id())
+            ->where('is_completed', false)
+            ->with('task')
+            ->get()
+            ->sortBy(fn (TaskAssignee $assignee): string => $assignee->task->due_on->toDateString())
+            ->take(3)
+            ->values();
     }
 }

@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use App\Enums\CalendarDayStatus;
 use App\Enums\SchoolDay;
 use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Database\Factories\JournalFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -98,7 +100,15 @@ class Journal extends Model
      */
     public static function isFillableDate(Carbon $date): bool
     {
-        return SchoolDay::tryFrom($date->dayOfWeekIso) !== null
-            && CalendarDay::statusFor($date)->requiresJournal();
+        return static::isFillableOn($date, CalendarDay::statusFor($date));
+    }
+
+    /**
+     * The same rule as {@see self::isFillableDate()} for a date whose calendar status is
+     * already known, so callers going through many dates need not query each one.
+     */
+    public static function isFillableOn(CarbonInterface $date, CalendarDayStatus $status): bool
+    {
+        return SchoolDay::tryFrom($date->dayOfWeekIso) !== null && $status->requiresJournal();
     }
 }

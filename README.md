@@ -7,12 +7,12 @@ Pembangunan ulang **SiPeka** (Sistem Penjadwalan & Kalender Akademik) dari Canva
 | Framework | Laravel 13 |
 | Panel & UI | Filament 5 (Livewire 4), Tailwind CSS 4 + Vite |
 | Database | MySQL 8 (`portal_guru`, utf8mb4) |
-| PHP | 8.4 (minimal 8.3) |
+| PHP | 8.4 (minimal 8.4.1) |
 | Zona waktu | `Asia/Jakarta` (WIB) |
 
 ## Kebutuhan
 
-- PHP ≥ 8.3 dengan ekstensi `intl`, `zip`, `pdo_mysql`, `gd`, `mbstring`, `fileinfo`, `openssl`, `curl`, `exif`
+- PHP ≥ 8.4.1 dengan ekstensi `intl`, `zip`, `pdo_mysql`, `gd`, `mbstring`, `fileinfo`, `openssl`, `curl`, `exif`
 - Composer 2
 - Node.js 20+ dan npm
 - MySQL 8
@@ -52,3 +52,7 @@ Buka http://127.0.0.1:8000. Panel Filament `portal` berjalan langsung di root UR
 ## Catatan Windows
 
 Kalau Composer dipanggil lewat `composer.bat`, cmd akan membuang karakter `^` dari constraint versi. Pakai `php path\ke\composer.phar require "vendor/paket:^1.0"`, atau jalankan `composer require vendor/paket` tanpa constraint.
+
+## Rilis Hostinger
+
+Panduan dan pembuat ZIP rilis tersedia di [docs/HOSTINGER-RELEASE.md](docs/HOSTINGER-RELEASE.md).

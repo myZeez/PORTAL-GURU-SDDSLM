@@ -20,4 +20,9 @@ Struktur paket memakai `.htaccess` root untuk meneruskan request ke `public/`, s
 
 ## Rilis revisi
 
-Ekstrak ZIP baru ke folder yang sama dan pertahankan `.env` yang sudah ada. Bila sebuah rilis menambah skema database, impor berkas SQL pada `database/hostinger/` melalui phpMyAdmin sebelum membuka aplikasi. Untuk rilis ini, impor `database/hostinger/2026_10_05_add_early_leave_reason.sql` satu kali.
+Ekstrak ZIP baru ke folder yang sama dan pertahankan `.env` yang sudah ada. Bila sebuah rilis menambah skema database, impor berkas SQL pada `database/hostinger/` melalui phpMyAdmin sebelum membuka aplikasi. Impor berkas yang belum pernah diimpor di database tersebut, berurutan sesuai tanggal pada namanya, masing-masing satu kali:
+
+1. `database/hostinger/2026_10_05_add_early_leave_reason.sql`
+2. `database/hostinger/2026_10_24_client_revisions.sql` (tabel baru untuk revisi klien dan jejak persetujuan Outing Class dan PID)
+
+Berkas kedua sudah mencatat migrasinya sendiri di tabel `migrations`, jadi tidak perlu `php artisan migrate`.

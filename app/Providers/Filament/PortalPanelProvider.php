@@ -3,6 +3,7 @@
 namespace App\Providers\Filament;
 
 use App\Filament\AvatarProviders\InitialsAvatarProvider;
+use App\Filament\Pages\Auth\Login;
 use App\Filament\Pages\ChangePassword;
 use App\Http\Middleware\RequirePasswordChange;
 use Filament\FontProviders\LocalFontProvider;
@@ -30,7 +31,7 @@ class PortalPanelProvider extends PanelProvider
             ->id('portal')
             ->path('')
             ->viteTheme('resources/css/filament/portal/theme.css')
-            ->login()
+            ->login(Login::class)
             ->profile(ChangePassword::class, isSimple: false)
             ->font(
                 "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
@@ -39,6 +40,7 @@ class PortalPanelProvider extends PanelProvider
             ->monoFont('JetBrains Mono')
             ->brandLogo(fn () => view('filament.brand'))
             ->brandLogoHeight('2.75rem')
+            ->favicon(asset('images/brand/favicon-32.png'))
             ->colors($this->colors())
             ->globalSearch(false)
             ->defaultAvatarProvider(InitialsAvatarProvider::class)
@@ -48,6 +50,10 @@ class PortalPanelProvider extends PanelProvider
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->widgets([])
+            ->renderHook(
+                PanelsRenderHook::HEAD_END,
+                fn (): string => view('filament.head-icons')->render(),
+            )
             ->renderHook(
                 PanelsRenderHook::BODY_END,
                 fn (): string => auth()->check() ? view('filament.dock')->render() : '',

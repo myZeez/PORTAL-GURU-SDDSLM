@@ -26,6 +26,22 @@
     --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.1);
     --shadow-xl: 0 12px 32px rgba(0, 0, 0, 0.12);
     --shadow-2xl: 0 20px 48px rgba(0, 0, 0, 0.14);
+
+    /* The sign-in illustration rises into place once; used behind `motion-safe:`. */
+    --animate-hero-rise: hero-rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+
+    /* `transform`, not `translate`: Tailwind positions the image with `translate`. */
+    @keyframes hero-rise {
+        from {
+            opacity: 0;
+            transform: translateY(1.5rem);
+        }
+
+        to {
+            opacity: 1;
+            transform: none;
+        }
+    }
 }
 
 @source '../../../../app/Filament/**/*';

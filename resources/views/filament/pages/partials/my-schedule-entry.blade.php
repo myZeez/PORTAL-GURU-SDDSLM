@@ -4,12 +4,9 @@
             'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl',
             'bg-primary-50 text-primary-600 dark:bg-primary-400/10 dark:text-primary-400' => $entry['type'] === 'teaching',
             'bg-info-50 text-info-600 dark:bg-info-400/10 dark:text-info-400' => $entry['type'] === 'covering',
-            'bg-gray-100 text-gray-400 dark:bg-white/5 dark:text-gray-500' => $entry['type'] === 'routine',
         ])
     >
-        @if ($entry['type'] === 'routine')
-            <x-filament::icon icon="heroicon-o-book-open" class="h-4.5 w-4.5" />
-        @elseif ($entry['type'] === 'covering')
+        @if ($entry['type'] === 'covering')
             <x-filament::icon icon="heroicon-o-arrows-right-left" class="h-4.5 w-4.5" />
         @else
             <x-filament::icon icon="heroicon-o-pencil-square" class="h-4.5 w-4.5" />

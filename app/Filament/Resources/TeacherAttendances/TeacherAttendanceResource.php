@@ -4,13 +4,15 @@ namespace App\Filament\Resources\TeacherAttendances;
 
 use App\Enums\AttendanceStatus;
 use App\Enums\Role;
+use App\Filament\Actions\AuditedBulkDeleteAction;
+use App\Filament\Actions\AuditedDeleteAction;
 use App\Filament\Resources\TeacherAttendances\Pages\ManageTeacherAttendances;
 use App\Models\TeacherAttendance;
 use App\Models\TeacherAttendanceLog;
 use BackedEnum;
 use Closure;
 use Filament\Actions\Action;
-use Filament\Actions\DeleteAction;
+use Filament\Actions\BulkActionGroup;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
@@ -21,7 +23,6 @@ use Filament\Schemas\Components\Callout;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
-use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -144,9 +145,6 @@ class TeacherAttendanceResource extends Resource
                     ->limit(40)
                     ->placeholder('—')
                     ->toggleable(),
-                IconColumn::make('is_late')
-                    ->label('Terlambat')
-                    ->boolean(),
                 TextColumn::make('notes')
                     ->label('Keterangan')
                     ->limit(40)
@@ -177,7 +175,12 @@ class TeacherAttendanceResource extends Resource
                 EditAction::make()
                     ->label('Koreksi')
                     ->using(fn (array $data, TeacherAttendance $record): TeacherAttendance => self::saveWithAudit($data, $record)),
-                DeleteAction::make(),
+                AuditedDeleteAction::make(),
+            ])
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    AuditedBulkDeleteAction::make(TeacherAttendance::class, 'data absensi', null, 'date'),
+                ]),
             ]);
     }
 

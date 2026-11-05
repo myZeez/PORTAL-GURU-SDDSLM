@@ -150,9 +150,11 @@ class Dashboard extends BaseDashboard
             return ['filled' => 0, 'expected' => 0];
         }
 
+        // A lesson taught by a team has no teacher to write its journal, so it is not expected.
         $expected = Schedule::query()
             ->where('semester_id', $semester->id)
             ->where('day_of_week', $today->dayOfWeekIso)
+            ->whereNotNull('teacher_id')
             ->count();
 
         $filled = Journal::query()
@@ -179,7 +181,7 @@ class Dashboard extends BaseDashboard
      * Every active teacher's total workload (teaching JP + additional-duty JP), highest
      * first.
      *
-     * @return list<array{teacher: string, jp: int}>
+     * @return list<array{teacher: string, jp: int, teaching_jp: int, duty_jp: int, duties: list<array{title: string, jp: int}>}>
      */
     public function getWorkloadAnalysis(): array
     {
@@ -188,13 +190,15 @@ class Dashboard extends BaseDashboard
         $teachingJpByTeacher = $semester
             ? Schedule::query()
                 ->where('semester_id', $semester->id)
+                ->whereNotNull('teacher_id')
                 ->with('subject')
                 ->get()
                 ->groupBy('teacher_id')
                 ->map(fn (Collection $schedules): int => $schedules->sum('jp'))
             : collect();
 
-        $dutyJpByTeacher = AdditionalDuty::query()->get()->groupBy('teacher_id')->map->sum('jp');
+        $dutiesByTeacher = AdditionalDuty::query()->get()->groupBy('teacher_id');
+        $dutyJpByTeacher = $dutiesByTeacher->map->sum('jp');
 
         $teacherIds = $teachingJpByTeacher->keys()->merge($dutyJpByTeacher->keys())->unique();
 
@@ -204,6 +208,12 @@ class Dashboard extends BaseDashboard
             ->map(fn (int $teacherId): array => [
                 'teacher' => $teachers->get($teacherId)?->name ?? '—',
                 'jp' => $teachingJpByTeacher->get($teacherId, 0) + $dutyJpByTeacher->get($teacherId, 0),
+                'teaching_jp' => $teachingJpByTeacher->get($teacherId, 0),
+                'duty_jp' => $dutyJpByTeacher->get($teacherId, 0),
+                'duties' => $dutiesByTeacher->get($teacherId, collect())
+                    ->map(fn (AdditionalDuty $duty): array => ['title' => $duty->title, 'jp' => $duty->jp])
+                    ->values()
+                    ->all(),
             ])
             ->sortByDesc('jp')
             ->values()

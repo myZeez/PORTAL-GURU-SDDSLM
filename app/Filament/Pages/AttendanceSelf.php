@@ -168,6 +168,27 @@ class AttendanceSelf extends Page
             ->success()
             ->title('Absensi tersimpan.')
             ->send();
+
+        $this->moveToNextReopenedDate($fillDate);
+    }
+
+    /**
+     * When catching up on reopened dates, go straight to the next one still missing (the
+     * following date, or the earliest one if the later ones are all done), so a long
+     * stretch can be filled in one after the other.
+     */
+    private function moveToNextReopenedDate(Carbon $filled): void
+    {
+        if (! $filled->lt(Carbon::today())) {
+            return;
+        }
+
+        $missing = $this->getOpenReopenings();
+        $next = $missing->first(fn (AttendanceReopening $reopening): bool => $reopening->date->gt($filled)) ?? $missing->first();
+
+        if ($next) {
+            $this->selectDate($next->date->toDateString());
+        }
     }
 
     public function getRecord(): ?TeacherAttendance

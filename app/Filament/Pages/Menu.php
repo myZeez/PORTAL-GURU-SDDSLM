@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Filament\Resources\AdditionalDuties\AdditionalDutyResource;
+use App\Filament\Resources\AssessmentMonitoring\AssessmentMonitoringResource;
 use App\Filament\Resources\Assessments\AssessmentResource;
 use App\Filament\Resources\CalendarDays\CalendarDayResource;
 use App\Filament\Resources\Classrooms\ClassroomResource;
@@ -10,7 +11,6 @@ use App\Filament\Resources\Cocurriculars\CocurricularResource;
 use App\Filament\Resources\CocurricularSchedules\CocurricularScheduleResource;
 use App\Filament\Resources\Curricula\CurriculumResource;
 use App\Filament\Resources\DailyRoutines\DailyRoutineResource;
-use App\Filament\Resources\ExtracurricularAttendances\ExtracurricularAttendanceResource;
 use App\Filament\Resources\Extracurriculars\ExtracurricularResource;
 use App\Filament\Resources\Journals\JournalResource;
 use App\Filament\Resources\MonitoringSchedules\MonitoringScheduleResource;
@@ -80,10 +80,9 @@ class Menu extends Page
                     ['label' => 'Supervisi', 'icon' => Heroicon::OutlinedEye, 'url' => SupervisionResource::getUrl(), 'visible' => SupervisionResource::canAccess()],
                     ['label' => 'Outing Class', 'icon' => Heroicon::OutlinedTruck, 'url' => OutingClassResource::getUrl()],
                     ['label' => 'PID', 'icon' => Heroicon::OutlinedComputerDesktop, 'url' => PidReservationResource::getUrl()],
-                    ['label' => 'Jadwal Kokurikuler', 'icon' => Heroicon::OutlinedRectangleStack, 'url' => CocurricularScheduleResource::getUrl()],
-                    ['label' => 'Kokurikuler', 'icon' => Heroicon::OutlinedPuzzlePiece, 'url' => CocurricularResource::getUrl()],
+                    ['label' => 'Jadwal Kokurikuler', 'icon' => Heroicon::OutlinedRectangleStack, 'url' => CocurricularScheduleResource::getUrl(), 'visible' => CocurricularScheduleResource::canAccess()],
+                    ['label' => 'Kokurikuler', 'icon' => Heroicon::OutlinedPuzzlePiece, 'url' => CocurricularResource::getUrl(), 'visible' => CocurricularResource::canAccess()],
                     ['label' => 'Jadwal Ekstrakurikuler', 'icon' => Heroicon::OutlinedSparkles, 'url' => ExtracurricularResource::getUrl()],
-                    ['label' => 'Absensi Ekstrakurikuler', 'icon' => Heroicon::OutlinedClipboardDocumentCheck, 'url' => ExtracurricularAttendanceResource::getUrl()],
                 ],
             ],
             [
@@ -100,6 +99,7 @@ class Menu extends Page
                     ['label' => 'Monitoring Kelas', 'icon' => Heroicon::OutlinedClipboardDocumentCheck, 'url' => MonitoringScheduleResource::getUrl(), 'visible' => MonitoringScheduleResource::canAccess()],
                     ['label' => 'Monev', 'icon' => Heroicon::OutlinedChartBar, 'url' => Monev::getUrl()],
                     ['label' => 'Performance Guru', 'icon' => Heroicon::OutlinedChartBarSquare, 'url' => PerformanceDashboard::getUrl()],
+                    ['label' => 'Penilaian Sumatif', 'icon' => Heroicon::OutlinedDocumentChartBar, 'url' => AssessmentMonitoringResource::getUrl(), 'visible' => AssessmentMonitoringResource::canAccess()],
                 ],
             ],
             [

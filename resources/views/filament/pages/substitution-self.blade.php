@@ -33,7 +33,7 @@
                         </p>
                         <p class="text-xs font-medium text-gray-500 dark:text-gray-400">
                             @if ($iAmSubstitute)
-                                Menggantikan {{ $entry->schedule->teacher->name }}
+                                Menggantikan {{ $entry->schedule->teacher_name }}
                             @else
                                 Digantikan oleh {{ $entry->substituteTeacher->name }}
                             @endif
@@ -44,6 +44,25 @@
                     <span class="shrink-0 text-xs font-bold whitespace-nowrap text-gray-700 dark:text-gray-300">
                         {{ $entry->date->format('d/m/Y') }}
                     </span>
+
+                    @if ($entry->canBeChangedBy(auth()->user()))
+                        <div class="flex shrink-0 items-center gap-1">
+                            <x-filament::icon-button
+                                icon="heroicon-m-pencil-square"
+                                color="gray"
+                                size="sm"
+                                label="Ubah penggantian"
+                                wire:click="mountAction('editSubstitution', { substitution: {{ $entry->id }} })"
+                            />
+                            <x-filament::icon-button
+                                icon="heroicon-m-trash"
+                                color="danger"
+                                size="sm"
+                                label="Hapus penggantian"
+                                wire:click="mountAction('deleteSubstitution', { substitution: {{ $entry->id }} })"
+                            />
+                        </div>
+                    @endif
                 </div>
             @empty
                 <div class="rounded-2xl border border-dashed border-gray-300 p-8 text-center text-sm text-gray-500 dark:border-white/10 dark:text-gray-400">

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\CalendarDayStatus;
 use App\Enums\SchoolDay;
+use App\Models\Concerns\HasAuditTrail;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Database\Factories\JournalFactory;
@@ -19,8 +20,36 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class Journal extends Model
 {
+    use HasAuditTrail;
+
     /** @use HasFactory<JournalFactory> */
     use HasFactory;
+
+    public function auditLabel(): string
+    {
+        $this->loadMissing('schedule.classroom', 'schedule.subject');
+
+        return "{$this->schedule->classroom->label} — {$this->schedule->subject->name} · {$this->date->format('d/m/Y')}";
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function auditSnapshot(): array
+    {
+        $this->loadMissing('schedule.classroom', 'schedule.subject', 'schedule.timeSlot', 'teacher');
+
+        return [
+            'Tanggal' => $this->date->translatedFormat('d F Y'),
+            'Jadwal' => "{$this->schedule->classroom->label} — {$this->schedule->subject->name} ({$this->schedule->timeSlot->label})",
+            'Guru' => $this->teacher?->name ?? '—',
+            'Materi' => (string) $this->topic,
+            'Siswa hadir' => (string) $this->students_present,
+            'Siswa izin' => (string) $this->students_permitted,
+            'Siswa sakit' => (string) $this->students_sick,
+            'Siswa tanpa keterangan' => (string) $this->students_absent,
+        ];
+    }
 
     /**
      * Record who submitted it, unless the caller already set one.

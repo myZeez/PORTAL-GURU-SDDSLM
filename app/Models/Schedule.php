@@ -20,6 +20,18 @@ class Schedule extends Model
     use HasFactory;
 
     /**
+     * A subject taught by a team has no individual teacher, whatever the caller sent.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (self $schedule): void {
+            if ($schedule->subject_id && Subject::query()->whereKey($schedule->subject_id)->whereNotNull('team_name')->where('team_name', '!=', '')->exists()) {
+                $schedule->teacher_id = null;
+            }
+        });
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
@@ -93,13 +105,24 @@ class Schedule extends Model
 
     /**
      * Get the teaching hours (JP) this slot counts for: 1, unless the subject is exempt
-     * (Penguatan Hafalan, PRAMUKA), which count 0.
+     * (Penguatan Hafalan, PRAMUKA) or taught by a team (UMMI), which count 0.
      *
      * @return Attribute<int, never>
      */
     protected function jp(): Attribute
     {
-        return Attribute::get(fn (): int => $this->subject?->counts_toward_teaching_load ? 1 : 0);
+        return Attribute::get(fn (): int => $this->teacher_id !== null && $this->subject?->counts_toward_teaching_load ? 1 : 0);
+    }
+
+    /**
+     * Who teaches the slot, as the school reads it: the teacher's name, or the team's name
+     * for a subject taught by a team.
+     *
+     * @return Attribute<string, never>
+     */
+    protected function teacherName(): Attribute
+    {
+        return Attribute::get(fn (): string => $this->teacher?->name ?? $this->subject?->team_name ?? '—');
     }
 
     /**
@@ -133,6 +156,29 @@ class Schedule extends Model
             ->where('time_slot_id', $timeSlotId)
             ->where('classroom_id', $classroomId)
             ->when($ignoreId, fn ($query) => $query->whereKeyNot($ignoreId))
+            ->exists();
+    }
+
+    /**
+     * Determine whether this exact lesson (same class, slot, subject and teacher) is already
+     * scheduled. The Kamis exemption lets a class hold two lessons in a slot, but never the
+     * same lesson twice.
+     */
+    public static function existsExactly(
+        int $semesterId,
+        SchoolDay $day,
+        int $timeSlotId,
+        int $classroomId,
+        int $subjectId,
+        ?int $teacherId,
+    ): bool {
+        return static::query()
+            ->where('semester_id', $semesterId)
+            ->where('day_of_week', $day->value)
+            ->where('time_slot_id', $timeSlotId)
+            ->where('classroom_id', $classroomId)
+            ->where('subject_id', $subjectId)
+            ->when($teacherId, fn ($query) => $query->where('teacher_id', $teacherId), fn ($query) => $query->whereNull('teacher_id'))
             ->exists();
     }
 

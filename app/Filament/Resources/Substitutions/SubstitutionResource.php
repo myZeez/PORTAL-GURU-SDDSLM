@@ -2,13 +2,15 @@
 
 namespace App\Filament\Resources\Substitutions;
 
+use App\Filament\Actions\AuditedBulkDeleteAction;
+use App\Filament\Actions\AuditedDeleteAction;
 use App\Filament\Resources\Substitutions\Pages\ManageSubstitutions;
 use App\Models\Schedule;
 use App\Models\Substitution;
 use BackedEnum;
 use Carbon\Carbon;
 use Closure;
-use Filament\Actions\DeleteAction;
+use Filament\Actions\BulkActionGroup;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
@@ -123,8 +125,18 @@ class SubstitutionResource extends Resource
                     ->searchable(),
             ])
             ->recordActions([
-                EditAction::make(),
-                DeleteAction::make(),
+                EditAction::make()
+                    ->using(function (Substitution $record, array $data): Substitution {
+                        $record->updateWithAudit(auth()->user(), $data);
+
+                        return $record;
+                    }),
+                AuditedDeleteAction::make(),
+            ])
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    AuditedBulkDeleteAction::make(Substitution::class, 'penggantian guru', null, 'date'),
+                ]),
             ]);
     }
 
@@ -151,6 +163,7 @@ class SubstitutionResource extends Resource
 
         return Schedule::query()
             ->where('day_of_week', $dayOfWeek)
+            ->whereNotNull('teacher_id')
             ->with(['classroom', 'subject', 'teacher', 'timeSlot'])
             ->get()
             ->mapWithKeys(fn (Schedule $schedule): array => [

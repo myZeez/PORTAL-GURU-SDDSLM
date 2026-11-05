@@ -2,10 +2,10 @@
 
 namespace App\Filament\Resources\Assessments;
 
+use App\Filament\Actions\AuditedDeleteAction;
 use App\Filament\Resources\Assessments\Pages\ManageAssessments;
 use App\Models\Assessment;
 use BackedEnum;
-use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
@@ -128,8 +128,13 @@ class AssessmentResource extends Resource
                     ->label('Selesai'),
             ])
             ->recordActions([
-                EditAction::make(),
-                DeleteAction::make(),
+                EditAction::make()
+                    ->using(function (Assessment $record, array $data): Assessment {
+                        $record->updateWithAudit(auth()->user(), $data);
+
+                        return $record;
+                    }),
+                AuditedDeleteAction::make(),
             ]);
     }
 

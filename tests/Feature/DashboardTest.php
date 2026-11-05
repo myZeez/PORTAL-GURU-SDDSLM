@@ -125,6 +125,49 @@ class DashboardTest extends TestCase
 
         $this->assertNotNull($row);
         $this->assertSame(3, $row['jp']);
+        $this->assertSame(1, $row['teaching_jp']);
+        $this->assertSame(2, $row['duty_jp']);
+        $this->assertCount(1, $row['duties']);
+    }
+
+    public function test_the_workload_analysis_is_a_collapsed_section_with_one_expandable_row_per_teacher(): void
+    {
+        $semester = Semester::factory()->active()->create();
+
+        foreach (['Guru Satu', 'Guru Dua'] as $name) {
+            Schedule::factory()->create([
+                'semester_id' => $semester->id,
+                'teacher_id' => User::factory()->create(['name' => $name])->id,
+                'subject_id' => Subject::factory()->create(['counts_toward_teaching_load' => true]),
+            ]);
+        }
+
+        $this->actingAs(User::factory()->withRoles(Role::WakaKurikulum)->create());
+
+        $html = Livewire::test(Dashboard::class)->html();
+
+        // The outer section and each teacher are <details> elements, and none starts open.
+        $this->assertSame(3, preg_match_all('/<details\b/', $html));
+        $this->assertDoesNotMatchRegularExpression('/<details[^>]*\bopen\b/', $html);
+        $this->assertStringContainsString('2 guru · rata-rata 1 JP', $html);
+        $this->assertStringContainsString('klik untuk membuka', $html);
+        $this->assertStringContainsString('Guru Satu', $html);
+        $this->assertStringContainsString('Guru Dua', $html);
+    }
+
+    public function test_a_schedule_without_a_teacher_adds_no_row_to_the_workload_analysis(): void
+    {
+        $semester = Semester::factory()->active()->create();
+
+        Schedule::factory()->create([
+            'semester_id' => $semester->id,
+            'teacher_id' => null,
+            'subject_id' => Subject::factory()->create(['counts_toward_teaching_load' => true]),
+        ]);
+
+        $this->actingAs(User::factory()->withRoles(Role::WakaKurikulum)->create());
+
+        $this->assertSame([], Livewire::test(Dashboard::class)->instance()->getWorkloadAnalysis());
     }
 
     public function test_todays_substitutions_are_listed_for_the_leadership_view(): void

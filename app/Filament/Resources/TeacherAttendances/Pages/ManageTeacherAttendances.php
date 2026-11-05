@@ -4,12 +4,14 @@ namespace App\Filament\Resources\TeacherAttendances\Pages;
 
 use App\Enums\AttendanceStatus;
 use App\Enums\CalendarDayStatus;
+use App\Filament\Actions\AuditHistoryAction;
 use App\Filament\Actions\SemesterReportAction;
 use App\Filament\Pages\AttendanceSelf;
 use App\Filament\Resources\TeacherAttendances\TeacherAttendanceResource;
 use App\Models\AttendanceReopening;
 use App\Models\CalendarDay;
 use App\Models\CalendarDayLog;
+use App\Models\Semester;
 use App\Models\TeacherAttendance;
 use App\Models\TeacherAttendanceLog;
 use App\Models\User;
@@ -23,6 +25,7 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ManageRecords;
 use Filament\Schemas\Components\EmbeddedTable;
 use Filament\Schemas\Components\RenderHook;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
@@ -32,6 +35,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
 class ManageTeacherAttendances extends ManageRecords
@@ -125,6 +129,7 @@ class ManageTeacherAttendances extends ManageRecords
     {
         return [
             SemesterReportAction::forMonth('reports.attendances.pdf', 'Unduh Rekap Bulanan', fn (): string => $this->selectedDate),
+            AuditHistoryAction::make(TeacherAttendance::class, 'Riwayat penghapusan massal absensi'),
             $this->manageDateAction(),
             $this->reopenDateAction(),
             $this->closeReopenedAction(),
@@ -180,7 +185,9 @@ class ManageTeacherAttendances extends ManageRecords
     }
 
     /**
-     * Let teachers fill in a missed day themselves, from "Absensi Saya", until it is closed.
+     * Let teachers catch up on missed days themselves, from "Absensi Saya", until they are
+     * closed. One date or a whole stretch (for example from the start of the semester): the
+     * days in it that need no attendance, such as weekends and holidays, are skipped.
      */
     private function reopenDateAction(): Action
     {
@@ -190,17 +197,44 @@ class ManageTeacherAttendances extends ManageRecords
             ->color('gray')
             ->visible(fn (): bool => auth()->user()->canManageAttendance())
             ->modalHeading('Buka kembali pengisian absensi')
-            ->modalDescription('Guru yang belum mengisi pada tanggal ini bisa mengisinya sendiri lewat Absensi Saya, sampai tanggalnya ditutup lagi.')
+            ->modalDescription('Guru yang belum mengisi pada tanggal-tanggal ini bisa merapel mengisinya sendiri lewat Absensi Saya, sampai ditutup lagi. Untuk satu hari saja, isi tanggal yang sama di kedua kolom.')
             ->schema([
-                DatePicker::make('date')
-                    ->label('Tanggal yang dibuka')
+                DatePicker::make('from')
+                    ->label('Dari tanggal')
                     ->required()
-                    ->minDate(now()->subDays(60))
+                    ->minDate(fn (): Carbon => self::earliestReopenableDate())
                     ->maxDate(now()->subDay())
+                    ->live(),
+                DatePicker::make('to')
+                    ->label('Sampai tanggal')
+                    ->required()
+                    ->minDate(fn (Get $get): Carbon => $get('from') ? Carbon::parse($get('from')) : self::earliestReopenableDate())
+                    ->maxDate(now()->subDay())
+                    ->live()
+                    ->helperText(function (Get $get): ?string {
+                        if (! $get('from') || ! $get('to') || $get('to') < $get('from')) {
+                            return null;
+                        }
+
+                        $days = TeacherAttendance::fillableDatesBetween(Carbon::parse($get('from')), Carbon::parse($get('to')))->count();
+
+                        return $days === 0
+                            ? 'Tidak ada hari efektif di rentang ini.'
+                            : "{$days} hari efektif akan dibuka. Akhir pekan dan hari libur dilewati.";
+                    })
                     ->rules([
-                        fn (): Closure => function (string $attribute, mixed $value, Closure $fail): void {
-                            if (! TeacherAttendance::isFillableDate(Carbon::parse($value))) {
-                                $fail('Tanggal ini bukan hari efektif atau kegiatan resmi, jadi tidak ada absensi yang perlu dibuka.');
+                        fn (Get $get): Closure => function (string $attribute, mixed $value, Closure $fail) use ($get): void {
+                            if (! $get('from')) {
+                                return;
+                            }
+
+                            $from = Carbon::parse($get('from'));
+                            $to = Carbon::parse($value);
+
+                            if ($from->diffInDays($to) > 366) {
+                                $fail('Rentang terlalu panjang. Buka paling banyak satu tahun sekali jalan.');
+                            } elseif (TeacherAttendance::fillableDatesBetween($from, $to)->isEmpty()) {
+                                $fail('Tidak ada hari efektif atau kegiatan resmi di rentang ini, jadi tidak ada absensi yang perlu dibuka.');
                             }
                         },
                     ]),
@@ -213,19 +247,27 @@ class ManageTeacherAttendances extends ManageRecords
             ->action(function (array $data): void {
                 abort_unless(auth()->user()->canManageAttendance(), 403);
 
-                $date = Carbon::parse($data['date']);
+                $dates = TeacherAttendance::fillableDatesBetween(Carbon::parse($data['from']), Carbon::parse($data['to']));
 
-                AttendanceReopening::query()->updateOrCreate(
-                    ['date' => $date->toDateString()],
-                    ['reason' => $data['reason'], 'opened_by' => auth()->id(), 'closed_at' => null, 'closed_by' => null],
-                );
+                DB::transaction(function () use ($dates, $data): void {
+                    foreach ($dates as $date) {
+                        AttendanceReopening::query()->updateOrCreate(
+                            ['date' => $date->toDateString()],
+                            ['reason' => $data['reason'], 'opened_by' => auth()->id(), 'closed_at' => null, 'closed_by' => null],
+                        );
+                    }
+                });
+
+                $when = $dates->count() === 1
+                    ? $dates->first()->translatedFormat('l, d F Y')
+                    : "{$dates->first()->translatedFormat('d F Y')} sampai {$dates->last()->translatedFormat('d F Y')} ({$dates->count()} hari efektif)";
 
                 $teachers = User::query()->where('is_active', true)->get()
                     ->reject(fn (User $user): bool => $user->isPrincipal() || $user->is(auth()->user()));
 
                 Notification::make()
                     ->title('Absensi dibuka kembali')
-                    ->body("Absensi {$date->translatedFormat('l, d F Y')} dibuka kembali. Isi sekarang bila belum.")
+                    ->body("Absensi {$when} dibuka kembali. Isi sekarang bila belum.")
                     ->warning()
                     ->actions([
                         Action::make('open')
@@ -235,8 +277,19 @@ class ManageTeacherAttendances extends ManageRecords
                     ])
                     ->sendToDatabase($teachers);
 
-                Notification::make()->success()->title('Absensi tanggal tersebut dibuka kembali.')->send();
+                Notification::make()->success()->title($dates->count() === 1 ? 'Absensi tanggal tersebut dibuka kembali.' : "Absensi {$dates->count()} hari dibuka kembali.")->send();
             });
+    }
+
+    /**
+     * How far back a reopening may start: the first day of the earliest semester on record,
+     * or six months ago when no semester has a start date yet.
+     */
+    public static function earliestReopenableDate(): Carbon
+    {
+        $start = Semester::query()->whereNotNull('starts_on')->min('starts_on');
+
+        return $start ? Carbon::parse($start)->startOfDay() : now()->subMonths(6)->startOfDay();
     }
 
     private function closeReopenedAction(): Action

@@ -26,7 +26,9 @@ class MasterDataSeederTest extends TestCase
             ->whereNotNull('assistant_teacher_id')
             ->count());
         $this->assertSame(18, Subject::query()->count());
-        $this->assertSame(2, Subject::query()->where('counts_toward_teaching_load', false)->count());
+        $this->assertSame(3, Subject::query()->where('counts_toward_teaching_load', false)->count());
+        $this->assertSame('Tim UMMI', Subject::query()->where('name', "Ummi/Al-Qur'an")->value('team_name'));
+        $this->assertSame(1, Subject::query()->whereNotNull('team_name')->count());
         $this->assertSame(19, TimeSlot::query()->count());
         $this->assertSame(40, DailyRoutine::query()->count());
         $this->assertSame('2026/2027 Ganjil', Semester::current()?->name);

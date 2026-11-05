@@ -21,8 +21,10 @@
 
             <div class="relative z-0 mx-auto mt-3 h-80 w-full max-w-sm lg:absolute lg:inset-y-0 lg:right-12 lg:mt-0 lg:h-auto lg:w-[42%] lg:max-w-none">
                 <img
-                    src="{{ asset('images/illustrations/teacher-team-dashboard.png') }}"
+                    src="{{ asset('images/illustrations/teacher-team-hero.webp') }}"
                     alt="Ilustrasi tim guru"
+                    width="932"
+                    height="1200"
                     class="pointer-events-none absolute bottom-0 left-1/2 h-full w-auto max-w-none -translate-x-1/2 object-contain object-bottom lg:h-[26rem]"
                 />
                 <div class="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-gray-50 via-gray-50/80 to-transparent dark:from-gray-950 dark:via-gray-950/80"></div>
@@ -86,7 +88,7 @@
                                 {{ $substitution->schedule->classroom->label }} — {{ $substitution->schedule->subject->name }}
                             </p>
                             <p class="text-xs text-gray-500 dark:text-gray-400">
-                                {{ $substitution->schedule->teacher->name }} → {{ $substitution->substituteTeacher->name }}
+                                {{ $substitution->schedule->teacher_name }} → {{ $substitution->substituteTeacher->name }}
                             </p>
                         </div>
                     </div>
@@ -97,32 +99,51 @@
                 @endforelse
             </div>
 
-            <div class="flex flex-col gap-2.5">
-                <p class="text-sm font-bold text-gray-950 dark:text-white">Analisis Beban Kerja</p>
+            @php
+                $workload = collect($this->getWorkloadAnalysis());
+                $averageJp = $workload->isEmpty() ? 0 : round($workload->avg('jp'), 1);
+            @endphp
 
-                <div class="overflow-x-auto rounded-2xl border border-gray-200 bg-white dark:border-white/10 dark:bg-gray-900">
-                    <table class="w-full border-collapse text-sm">
-                        <thead>
-                            <tr class="border-b border-gray-200 bg-gray-50 dark:border-white/10 dark:bg-white/5">
-                                <th class="px-3 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Guru</th>
-                                <th class="px-3 py-2 text-right text-xs font-semibold text-gray-500 dark:text-gray-400">Total JP</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse ($this->getWorkloadAnalysis() as $row)
-                                <tr class="border-b border-gray-100 last:border-0 dark:border-white/5">
-                                    <td class="px-3 py-2 text-gray-950 dark:text-white">{{ $row['teacher'] }}</td>
-                                    <td class="px-3 py-2 text-right font-bold text-gray-950 dark:text-white">{{ $row['jp'] }}</td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="2" class="px-3 py-6 text-center text-sm text-gray-500 dark:text-gray-400">Belum ada data beban kerja.</td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
+            {{-- Closed by default so the page does not grow by one row per teacher; each teacher opens on its own. --}}
+            <details class="group rounded-2xl border border-gray-200 bg-white dark:border-white/10 dark:bg-gray-900">
+                <summary class="flex cursor-pointer list-none items-center justify-between gap-3 rounded-2xl p-4 select-none focus-visible:outline-2 focus-visible:outline-primary-600 [&::-webkit-details-marker]:hidden">
+                    <span>
+                        <span class="block text-sm font-bold text-gray-950 dark:text-white">Analisis Beban Kerja</span>
+                        <span class="block text-xs text-gray-500 dark:text-gray-400">
+                            @if ($workload->isEmpty())
+                                Belum ada data beban kerja
+                            @else
+                                {{ $workload->count() }} guru · rata-rata {{ $averageJp }} JP<span class="group-open:hidden"> · klik untuk membuka</span>
+                            @endif
+                        </span>
+                    </span>
+                    <x-filament::icon icon="heroicon-m-chevron-down" class="size-5 shrink-0 text-gray-400 transition-transform group-open:rotate-180" />
+                </summary>
+
+                <div class="flex flex-col gap-1.5 border-t border-gray-100 p-3 dark:border-white/5">
+                    @forelse ($workload as $row)
+                        <details class="group/teacher rounded-xl border border-gray-100 dark:border-white/5">
+                            <summary class="flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-3 py-2.5 select-none hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-primary-600 dark:hover:bg-white/5 [&::-webkit-details-marker]:hidden">
+                                <span class="min-w-0 truncate text-sm text-gray-950 dark:text-white">{{ $row['teacher'] }}</span>
+                                <span class="flex shrink-0 items-center gap-2">
+                                    <span class="text-sm font-bold text-gray-950 dark:text-white">{{ $row['jp'] }} JP</span>
+                                    <x-filament::icon icon="heroicon-m-chevron-down" class="size-4 text-gray-400 transition-transform group-open/teacher:rotate-180" />
+                                </span>
+                            </summary>
+
+                            <dl class="grid gap-1 px-3 pb-3 text-xs text-gray-600 dark:text-gray-400">
+                                <div class="flex justify-between gap-3"><dt>Mengajar</dt><dd class="font-semibold text-gray-950 dark:text-white">{{ $row['teaching_jp'] }} JP</dd></div>
+                                <div class="flex justify-between gap-3"><dt>Tugas tambahan</dt><dd class="font-semibold text-gray-950 dark:text-white">{{ $row['duty_jp'] }} JP</dd></div>
+                                @foreach ($row['duties'] as $duty)
+                                    <div class="flex justify-between gap-3 pl-3"><dt class="truncate">· {{ $duty['title'] }}</dt><dd class="shrink-0">{{ $duty['jp'] }} JP</dd></div>
+                                @endforeach
+                            </dl>
+                        </details>
+                    @empty
+                        <p class="px-3 py-6 text-center text-sm text-gray-500 dark:text-gray-400">Belum ada data beban kerja.</p>
+                    @endforelse
                 </div>
-            </div>
+            </details>
 
             <div class="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
                 <a href="{{ \App\Filament\Pages\ScheduleMatrix::getUrl() }}" class="rounded-2xl border border-gray-200 bg-white p-3 text-center text-sm font-bold text-gray-700 dark:border-white/10 dark:bg-gray-900 dark:text-gray-300">Matriks Jadwal</a>
@@ -165,7 +186,7 @@
                                 {{ $substitution->schedule->classroom->label }} — {{ $substitution->schedule->subject->name }}
                             </p>
                             <p class="text-xs text-gray-500 dark:text-gray-400">
-                                {{ $iAmSubstitute ? 'Anda menggantikan '.$substitution->schedule->teacher->name : 'Digantikan oleh '.$substitution->substituteTeacher->name }}
+                                {{ $iAmSubstitute ? 'Anda menggantikan '.$substitution->schedule->teacher_name : 'Digantikan oleh '.$substitution->substituteTeacher->name }}
                             </p>
                         </div>
                     </div>

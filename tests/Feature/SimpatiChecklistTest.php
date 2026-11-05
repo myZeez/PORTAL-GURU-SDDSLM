@@ -275,4 +275,74 @@ class SimpatiChecklistTest extends TestCase
         $this->expectException(LogicException::class);
         $log->update(['is_filled' => false]);
     }
+
+    public function test_a_pendamping_gets_the_simpati_link_that_opens_in_a_new_tab(): void
+    {
+        [$pendamping] = $this->pendampingWithClass();
+
+        $this->actingAs($pendamping);
+
+        $html = Livewire::test(SimpatiChecklist::class)->html();
+
+        $this->assertStringContainsString('href="https://simpati.sdislamdarussalam.id/"', $html);
+        $this->assertStringContainsString('target="_blank"', $html);
+        $this->assertStringContainsString('rel="noopener noreferrer"', $html);
+    }
+
+    public function test_only_pendamping_see_the_link_and_waka_kurikulum_does_not(): void
+    {
+        $this->pendampingWithClass();
+
+        $this->actingAs(User::factory()->withRoles(Role::WakaKurikulum)->create());
+
+        Livewire::test(SimpatiChecklist::class)
+            ->assertDontSee('simpati.sdislamdarussalam.id')
+            ->assertDontSee('Buka SIMPATI');
+    }
+
+    public function test_pressing_selesai_marks_today_done_for_the_own_class_and_is_safe_to_repeat(): void
+    {
+        [$pendamping, $classroom] = $this->pendampingWithClass();
+        $other = Classroom::factory()->create(['code' => '2-BBB']);
+
+        $this->actingAs($pendamping);
+
+        $component = Livewire::test(SimpatiChecklist::class)->call('markTodayDone');
+        $component->call('markTodayDone');
+
+        $this->assertDatabaseHas('simpati_checks', ['classroom_id' => $classroom->id, 'date' => '2026-10-26', 'is_filled' => true, 'checked_by' => $pendamping->id]);
+        $this->assertDatabaseMissing('simpati_checks', ['classroom_id' => $other->id]);
+        $this->assertSame(1, SimpatiCheckLog::query()->where('classroom_id', $classroom->id)->count());
+        $component->assertSee('Selesai hari ini');
+    }
+
+    public function test_selesai_changes_nothing_on_a_day_that_needs_no_simpati(): void
+    {
+        Carbon::setTestNow('2026-10-25 10:00:00');
+        [$pendamping, $classroom] = $this->pendampingWithClass();
+
+        $this->actingAs($pendamping);
+
+        Livewire::test(SimpatiChecklist::class)
+            ->call('markTodayDone')
+            ->assertSee('Hari ini bukan hari wajib SIMPATI.');
+
+        $this->assertDatabaseCount('simpati_checks', 0);
+    }
+
+    public function test_the_status_set_by_selesai_reaches_the_monitoring_summary(): void
+    {
+        [$pendamping, $classroom] = $this->pendampingWithClass();
+
+        $this->actingAs($pendamping);
+        Livewire::test(SimpatiChecklist::class)->call('markTodayDone');
+
+        $this->assertTrue(SimpatiCheck::query()->where('classroom_id', $classroom->id)->whereDate('date', '2026-10-26')->value('is_filled'));
+
+        $this->actingAs(User::factory()->withRoles(Role::WakaKurikulum)->create());
+
+        $summary = Livewire::test(Dashboard::class)->instance()->getSimpatiSummary();
+
+        $this->assertSame(1, $summary['filled']);
+    }
 }

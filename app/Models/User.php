@@ -227,6 +227,66 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
     }
 
     /**
+     * Active teaching staff: everyone who can sign in and is not the principal or the
+     * technical Super Admin account. Used wherever work is addressed to "all teachers".
+     *
+     * @return EloquentCollection<int, self>
+     */
+    public static function activeTeachers(): EloquentCollection
+    {
+        return static::query()->where('is_active', true)->orderBy('name')->get()
+            ->reject(fn (self $user): bool => $user->isPrincipal() || $user->isSuperAdmin())
+            ->values();
+    }
+
+    /**
+     * Determine whether the user monitors which classes and teachers have carried out the
+     * summative assessment: Waka Kurikulum and Admin Kurikulum, with Super Admin as the
+     * fallback. Correcting what a teacher entered is for {@see self::canCorrectDailyRecords()}.
+     */
+    public function canMonitorAssessments(): bool
+    {
+        return $this->isSuperAdmin() || $this->hasRole(Role::WakaKurikulum, Role::AdminKurikulum);
+    }
+
+    /**
+     * Determine whether the user sets the kokurikuler schedule: Waka Kurikulum, with Super
+     * Admin as the fallback. Admin Kurikulum does not.
+     */
+    public function canManageCocurriculars(): bool
+    {
+        return $this->isSuperAdmin() || $this->hasRole(Role::WakaKurikulum);
+    }
+
+    /**
+     * Determine whether the user is the homeroom teacher (wali kelas) of a class. The
+     * assistant (pendamping) is deliberately not one.
+     */
+    public function isHomeroomTeacher(): bool
+    {
+        return $this->homeroomClassroom()->exists();
+    }
+
+    /**
+     * Whether the kokurikuler menus are for this user at all: whoever sets the schedule,
+     * and the wali kelas who fill it in. Nobody else sees them.
+     */
+    public function canAccessCocurriculars(): bool
+    {
+        return $this->canManageCocurriculars() || $this->isHomeroomTeacher();
+    }
+
+    /**
+     * Determine whether the user may remove or correct daily records that others filed
+     * (substitutions, journals, attendance): Waka Kurikulum, with Super Admin as the
+     * fallback. Everything done this way leaves a trace with a reason.
+     */
+    public function canCorrectDailyRecords(): bool
+    {
+        return $this->isSuperAdmin() || $this->hasRole(Role::WakaKurikulum);
+    }
+
+    /**
      * Determine whether the user manages other teachers' attendance: corrects records,
      * fills missing days on a teacher's behalf, and reopens a closed date.
      */

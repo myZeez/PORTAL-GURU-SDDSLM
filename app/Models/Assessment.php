@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasAuditTrail;
 use Carbon\Carbon;
 use Database\Factories\AssessmentFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -13,8 +14,36 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['classroom_id', 'subject_id', 'teacher_id', 'date', 'chapter', 'is_completed', 'question_link', 'result_link'])]
 class Assessment extends Model
 {
+    use HasAuditTrail;
+
     /** @use HasFactory<AssessmentFactory> */
     use HasFactory;
+
+    public function auditLabel(): string
+    {
+        $this->loadMissing('classroom', 'subject');
+
+        return "{$this->classroom->label} — {$this->subject->name} · {$this->date->format('d/m/Y')}";
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function auditSnapshot(): array
+    {
+        $this->loadMissing('classroom', 'subject', 'teacher');
+
+        return [
+            'Tanggal' => $this->date->translatedFormat('d F Y'),
+            'Rombel' => $this->classroom->label,
+            'Mata pelajaran' => $this->subject->name,
+            'Guru' => $this->teacher?->name ?? '—',
+            'Bab' => (string) $this->chapter,
+            'Selesai' => $this->is_completed ? 'Ya' : 'Belum',
+            'Link soal' => (string) ($this->question_link ?: '—'),
+            'Link hasil' => (string) ($this->result_link ?: '—'),
+        ];
+    }
 
     /**
      * Record the owner, unless the caller already set one. Unlike every other module,

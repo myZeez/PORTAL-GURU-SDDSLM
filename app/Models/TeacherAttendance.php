@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\DB;
 
 #[Fillable(['teacher_id', 'date', 'status', 'leave_starts_on', 'leave_ends_on', 'early_leave_reason', 'notes', 'filled_at', 'created_by'])]
@@ -91,20 +92,6 @@ class TeacherAttendance extends Model
     }
 
     /**
-     * Whether this attendance was filled after the date it is for.
-     *
-     * @return Attribute<bool, never>
-     */
-    protected function isLate(): Attribute
-    {
-        return Attribute::get(
-            fn (): bool => $this->filled_at !== null
-                && $this->date !== null
-                && $this->filled_at->toDateString() > $this->date->toDateString()
-        );
-    }
-
-    /**
      * Get the teacher this attendance belongs to.
      *
      * @return BelongsTo<User, $this>
@@ -160,6 +147,26 @@ class TeacherAttendance extends Model
     }
 
     /**
+     * The days from one date to another (both included) on which attendance is expected, in
+     * order. Weekends and holidays are left out; a weekend marked as an official activity
+     * stays in.
+     *
+     * @return SupportCollection<int, Carbon>
+     */
+    public static function fillableDatesBetween(CarbonInterface $from, CarbonInterface $to): SupportCollection
+    {
+        $dates = collect();
+
+        for ($date = Carbon::parse($from)->startOfDay(); $date->lte($to); $date = $date->copy()->addDay()) {
+            if (static::isFillableDate($date)) {
+                $dates->push($date);
+            }
+        }
+
+        return $dates;
+    }
+
+    /**
      * Fill in, or correct, a teacher's attendance on their behalf, and write who did it,
      * why, and what changed (before and after) to the audit trail in the same transaction.
      * An existing record for that teacher and date is corrected; otherwise one is created.
@@ -209,6 +216,36 @@ class TeacherAttendance extends Model
             ]);
 
             return $record;
+        });
+    }
+
+    /**
+     * Remove this attendance record, with the reason, and keep the record's last state in
+     * the attendance history (the history entry outlives the record it describes).
+     */
+    public function deleteWithAudit(User $actor, string $reason): bool
+    {
+        return DB::transaction(function () use ($actor, $reason): bool {
+            $before = $this->snapshot();
+            $teacherId = $this->teacher_id;
+            $date = $this->date->toDateString();
+
+            if (! $this->delete()) {
+                return false;
+            }
+
+            TeacherAttendanceLog::create([
+                'teacher_attendance_id' => null,
+                'teacher_id' => $teacherId,
+                'date' => $date,
+                'actor_id' => $actor->id,
+                'action' => TeacherAttendanceLog::ACTION_DELETED,
+                'before' => $before,
+                'after' => [],
+                'reason' => $reason,
+            ]);
+
+            return true;
         });
     }
 

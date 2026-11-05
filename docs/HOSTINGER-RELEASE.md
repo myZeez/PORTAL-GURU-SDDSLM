@@ -24,5 +24,6 @@ Ekstrak ZIP baru ke folder yang sama dan pertahankan `.env` yang sudah ada. Bila
 
 1. `database/hostinger/2026_10_05_add_early_leave_reason.sql`
 2. `database/hostinger/2026_10_24_client_revisions.sql` (tabel baru untuk revisi klien dan jejak persetujuan Outing Class dan PID)
+3. `database/hostinger/2026_11_03_revisions_batch_two.sql` (Tim UMMI dan riwayat perubahan data harian). Jadwal UMMI yang sudah ada kehilangan guru perorangannya dan menjadi Tim UMMI.
 
-Berkas kedua sudah mencatat migrasinya sendiri di tabel `migrations`, jadi tidak perlu `php artisan migrate`.
+Berkas kedua dan ketiga sudah mencatat migrasinya sendiri di tabel `migrations`, jadi tidak perlu `php artisan migrate`.

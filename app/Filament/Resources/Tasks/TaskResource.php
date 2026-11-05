@@ -2,16 +2,21 @@
 
 namespace App\Filament\Resources\Tasks;
 
+use App\Filament\Actions\AuditedBulkDeleteAction;
 use App\Filament\Resources\Tasks\Pages\ManageTasks;
 use App\Models\Task;
+use App\Models\User;
 use BackedEnum;
+use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
@@ -43,6 +48,13 @@ class TaskResource extends Resource
                     ->label('Judul')
                     ->required()
                     ->columnSpanFull(),
+                Toggle::make('all_teachers')
+                    ->label('Semua guru')
+                    ->helperText(fn (): string => 'Pilih seluruh guru aktif ('.User::activeTeachers()->count().' orang) sebagai penerima.')
+                    ->dehydrated(false)
+                    ->live()
+                    ->afterStateUpdated(fn (bool $state, Set $set) => $set('assignees', $state ? User::activeTeachers()->pluck('id')->all() : []))
+                    ->columnSpanFull(),
                 Select::make('assignees')
                     ->label('Penerima')
                     ->relationship('assignees', 'name')
@@ -50,6 +62,12 @@ class TaskResource extends Resource
                     ->multiple()
                     ->searchable()
                     ->preload()
+                    ->live()
+                    ->afterStateUpdated(function (?array $state, Set $set): void {
+                        $everyone = User::activeTeachers()->pluck('id')->all();
+
+                        $set('all_teachers', $everyone !== [] && array_diff($everyone, array_map('intval', $state ?? [])) === []);
+                    })
                     ->columnSpanFull(),
                 DatePicker::make('starts_on')
                     ->label('Tanggal Mulai'),
@@ -97,6 +115,11 @@ class TaskResource extends Resource
             ->recordActions([
                 EditAction::make(),
                 DeleteAction::make(),
+            ])
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    AuditedBulkDeleteAction::make(Task::class, 'tugas', 'Daftar penerima dan status selesainya ikut terhapus.', 'due_on'),
+                ]),
             ]);
     }
 

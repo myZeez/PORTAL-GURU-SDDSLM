@@ -97,6 +97,25 @@ class ScheduleMatrixTest extends TestCase
             ->assertSee('AA');
     }
 
+    public function test_a_routine_is_centred_and_styled_apart_from_the_lessons(): void
+    {
+        $semester = Semester::factory()->active()->create();
+        $slot = TimeSlot::factory()->create(['starts_at' => '06:00', 'ends_at' => '06:40']);
+        $lessonSlot = TimeSlot::factory()->create(['starts_at' => '07:30', 'ends_at' => '08:00']);
+
+        DailyRoutine::factory()->create(['day_of_week' => SchoolDay::Senin, 'time_slot_id' => $slot->id, 'label' => 'Sarapan Makanan Bergizi Gratis']);
+        $this->lesson($semester, SchoolDay::Senin, $lessonSlot, Classroom::factory()->create(), Subject::factory()->create(['name' => 'Matematika']), User::factory()->create());
+
+        $this->actingAs(User::factory()->create());
+
+        $html = Livewire::test(ScheduleMatrix::class)->html();
+
+        // The band for the whole-school routine: centred text on its own tint.
+        $this->assertMatchesRegularExpression('/<td[^>]*class="[^"]*bg-info-50[^"]*"[^>]*>\s*<div class="[^"]*text-center[^"]*text-info-700[^"]*">Sarapan Makanan Bergizi Gratis<\/div>/', $html);
+        // A lesson keeps the plain grey tile, so the two never look alike.
+        $this->assertMatchesRegularExpression('/<div[^>]*class="[^"]*bg-gray-100[^"]*"[^>]*>\s*<div[^>]*>\s*Matematika/', $html);
+    }
+
     public function test_switching_the_day_changes_which_schedules_show(): void
     {
         $semester = Semester::factory()->active()->create();
@@ -314,5 +333,56 @@ class ScheduleMatrixTest extends TestCase
             ->call('selectDay', 99)
             ->call('setMatrixView', 'semua')
             ->assertOk();
+    }
+
+    public function test_ummi_for_several_classes_at_once_is_shown_as_tim_ummi_and_never_as_a_clash(): void
+    {
+        $semester = Semester::factory()->active()->create();
+        $slot = TimeSlot::factory()->create();
+        $ummi = Subject::factory()->create(['name' => "Ummi/Al-Qur'an", 'team_name' => 'Tim UMMI', 'counts_toward_teaching_load' => false]);
+
+        foreach (Classroom::factory()->count(3)->create() as $classroom) {
+            Schedule::factory()->create([
+                'semester_id' => $semester->id,
+                'day_of_week' => SchoolDay::Senin,
+                'time_slot_id' => $slot->id,
+                'classroom_id' => $classroom->id,
+                'subject_id' => $ummi->id,
+            ]);
+        }
+
+        $this->actingAs(User::factory()->withRoles(Role::WakaKurikulum)->create());
+
+        $component = Livewire::test(ScheduleMatrix::class);
+        $summary = $component->instance()->summarize($component->instance()->getGrid());
+
+        $this->assertSame(0, $summary['clashes']);
+        $this->assertSame([], $component->instance()->getClashDescriptions());
+        $component->assertSee('Tim UMMI');
+    }
+
+    public function test_the_class_view_names_tim_ummi_as_the_teacher_and_the_teacher_list_skips_it(): void
+    {
+        $semester = Semester::factory()->active()->create();
+        $slot = TimeSlot::factory()->create();
+        $classroom = Classroom::factory()->create(['code' => 'II-A']);
+        $ummi = Subject::factory()->create(['name' => "Ummi/Al-Qur'an", 'team_name' => 'Tim UMMI', 'counts_toward_teaching_load' => false]);
+
+        Schedule::factory()->create([
+            'semester_id' => $semester->id,
+            'day_of_week' => SchoolDay::Senin,
+            'time_slot_id' => $slot->id,
+            'classroom_id' => $classroom->id,
+            'subject_id' => $ummi->id,
+        ]);
+
+        $this->actingAs(User::factory()->withRoles(Role::WakaKurikulum)->create());
+
+        $component = Livewire::test(ScheduleMatrix::class)
+            ->call('setMatrixView', ScheduleMatrix::VIEW_CLASS)
+            ->set('classroomId', (string) $classroom->id);
+
+        $component->assertSee('Tim UMMI');
+        $this->assertCount(0, $component->instance()->getTeachers());
     }
 }

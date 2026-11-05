@@ -91,18 +91,44 @@ class MyScheduleTest extends TestCase
             ->assertDontSee('Bahasa Inggris');
     }
 
-    public function test_it_shows_whole_school_routines_alongside_teaching_slots(): void
+    public function test_whole_school_routines_never_appear_in_my_schedule(): void
     {
         DailyRoutine::factory()->create([
             'day_of_week' => SchoolDay::Senin,
             'label' => 'Upacara Bendera',
         ]);
 
-        $this->actingAs(User::factory()->create())
-            ->get(MySchedule::getUrl())
-            ->assertOk()
-            ->assertSee('Upacara Bendera')
-            ->assertSee('Rutinitas · Semua Kelas');
+        $this->actingAs(User::factory()->create());
+
+        Livewire::test(MySchedule::class)
+            ->assertDontSee('Upacara Bendera')
+            ->assertDontSee('Rutinitas')
+            ->call('setMode', MySchedule::MODE_WEEK)
+            ->assertDontSee('Upacara Bendera')
+            ->call('setMode', MySchedule::MODE_DATE)
+            ->set('date', '2026-10-26')
+            ->assertDontSee('Upacara Bendera');
+    }
+
+    public function test_only_my_own_lessons_are_listed_and_the_routine_stays_on_the_matrix(): void
+    {
+        $semester = Semester::factory()->active()->create();
+        $teacher = User::factory()->create();
+
+        DailyRoutine::factory()->create(['day_of_week' => SchoolDay::Senin, 'label' => 'Istirahat']);
+        Schedule::factory()->create([
+            'semester_id' => $semester->id,
+            'day_of_week' => SchoolDay::Senin,
+            'subject_id' => Subject::factory()->create(['name' => 'Matematika']),
+            'teacher_id' => $teacher->id,
+        ]);
+
+        $this->actingAs($teacher);
+
+        Livewire::test(MySchedule::class)
+            ->set('day', SchoolDay::Senin->value)
+            ->assertSee('Matematika')
+            ->assertDontSee('Istirahat');
     }
 
     public function test_an_entry_shows_start_time_end_time_subject_and_class(): void

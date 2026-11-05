@@ -45,7 +45,13 @@ class CocurricularResource extends Resource
             ->components([
                 Select::make('cocurricular_schedule_id')
                     ->label('Jadwal Kokurikuler')
-                    ->relationship('schedule', 'theme')
+                    ->relationship(
+                        'schedule',
+                        'theme',
+                        modifyQueryUsing: fn (Builder $query): Builder => auth()->user()->canManageCocurriculars()
+                            ? $query
+                            : $query->whereHas('classrooms', fn (Builder $query): Builder => $query->where('homeroom_teacher_id', auth()->id())),
+                    )
                     ->getOptionLabelFromRecordUsing(fn (CocurricularSchedule $record): string => "{$record->date->translatedFormat('d M Y')} — {$record->theme}")
                     ->required()
                     ->searchable()
@@ -55,11 +61,9 @@ class CocurricularResource extends Resource
                     ->relationship(
                         'classroom',
                         'code',
-                        modifyQueryUsing: fn (Builder $query): Builder => auth()->user()->isCurriculumManager()
+                        modifyQueryUsing: fn (Builder $query): Builder => auth()->user()->canManageCocurriculars()
                             ? $query
-                            : $query->where(fn (Builder $query): Builder => $query
-                                ->where('homeroom_teacher_id', auth()->id())
-                                ->orWhere('assistant_teacher_id', auth()->id())),
+                            : $query->where('homeroom_teacher_id', auth()->id()),
                     )
                     ->getOptionLabelFromRecordUsing(fn (Classroom $record): string => $record->label)
                     ->required()
@@ -71,6 +75,7 @@ class CocurricularResource extends Resource
                     ->required(),
                 Textarea::make('description')
                     ->label('Deskripsi')
+                    ->required()
                     ->rows(3)
                     ->columnSpanFull(),
                 CheckboxList::make('dimensions')

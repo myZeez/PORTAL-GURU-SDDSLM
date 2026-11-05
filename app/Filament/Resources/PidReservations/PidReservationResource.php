@@ -199,13 +199,6 @@ class PidReservationResource extends Resource
                             ])
                             ->sendToDatabase($record->requestedBy);
                     }),
-                Action::make('whatsapp')
-                    ->label('WhatsApp')
-                    ->icon(Heroicon::OutlinedChatBubbleLeftRight)
-                    ->color('gray')
-                    ->visible(fn (PidReservation $record): bool => $record->status === OutingStatus::Disetujui)
-                    ->url(fn (PidReservation $record): string => self::whatsappUrl($record))
-                    ->openUrlInNewTab(),
                 EditAction::make(),
                 DeleteAction::make(),
             ]);
@@ -216,21 +209,5 @@ class PidReservationResource extends Resource
         return [
             'index' => ManagePidReservations::route('/'),
         ];
-    }
-
-    /**
-     * Build a WhatsApp deep link to the PID manager, with the loan message already
-     * filled in, once a reservation has been approved.
-     */
-    private static function whatsappUrl(PidReservation $record): string
-    {
-        $phone = config('portal.pid_manager_phone');
-
-        $message = "Peminjaman PID:\nTanggal: {$record->date->translatedFormat('d F Y')}\nJam: ".
-            substr($record->starts_at, 0, 5).'–'.substr($record->ends_at, 0, 5).
-            "\nTempat: {$record->location}\nMata Pelajaran: {$record->subject->name}\n".
-            "Keperluan: {$record->purpose}\nDiajukan oleh: {$record->requestedBy->name}";
-
-        return "https://wa.me/{$phone}?text=".rawurlencode($message);
     }
 }

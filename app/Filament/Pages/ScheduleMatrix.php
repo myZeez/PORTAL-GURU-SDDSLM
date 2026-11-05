@@ -164,7 +164,7 @@ class ScheduleMatrix extends Page
      */
     public function getTeachers(): Collection
     {
-        $ids = $this->schedules()->pluck('teacher_id')->unique();
+        $ids = $this->schedules()->pluck('teacher_id')->filter()->unique();
 
         return User::query()->whereKey($ids)->orderBy('name')->get();
     }
@@ -223,7 +223,7 @@ class ScheduleMatrix extends Page
             $first = $slot->first();
             $when = "{$first->day_of_week->getLabel()} {$first->timeSlot->label}";
 
-            foreach ($slot->groupBy('teacher_id') as $sameTeacher) {
+            foreach ($slot->whereNotNull('teacher_id')->groupBy('teacher_id') as $sameTeacher) {
                 if ($this->isClash($sameTeacher)) {
                     $descriptions[] = "{$sameTeacher->first()->teacher->name} mengajar di {$sameTeacher->count()} kelas sekaligus pada {$when}: ".$sameTeacher->map(fn (Schedule $s): string => $s->classroom->code)->join(', ').'.';
                 }
@@ -374,15 +374,15 @@ class ScheduleMatrix extends Page
 
         $secondaryLabel = $secondary === 'classroom'
             ? $schedule->classroom->code
-            : ($schedule->teacher->code ?? Str::limit($schedule->teacher->name, 10));
+            : ($schedule->teacher?->code ?? Str::limit($schedule->teacher_name, 10));
 
         return [
             'type' => 'lesson',
             'subject' => $schedule->subject->name,
             'secondary' => $secondaryLabel,
-            'mine' => $schedule->teacher_id === auth()->id(),
+            'mine' => $schedule->teacher_id !== null && $schedule->teacher_id === auth()->id(),
             'clashes' => $this->canSeeClashes() ? $this->clashesFor($schedule) : [],
-            'title' => "{$schedule->subject->name} — {$schedule->teacher->name} — {$schedule->classroom->label}",
+            'title' => "{$schedule->subject->name} — {$schedule->teacher_name} — {$schedule->classroom->label}",
         ];
     }
 
@@ -436,7 +436,8 @@ class ScheduleMatrix extends Page
 
         foreach ($this->schedules()->groupBy(fn (Schedule $s): string => "{$s->day_of_week->value}|{$s->time_slot_id}") as $slotKey => $slot) {
             foreach (['teacher' => 'teacher_id', 'classroom' => 'classroom_id'] as $kind => $column) {
-                foreach ($slot->groupBy($column) as $group) {
+                // Lessons taught by a team have no teacher, so they never clash on that account.
+                foreach ($slot->whereNotNull($column)->groupBy($column) as $group) {
                     if ($this->isClash($group)) {
                         foreach ($group as $schedule) {
                             $clashes[(string) $schedule->id][] = $kind;

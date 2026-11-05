@@ -7,9 +7,10 @@ use App\Models\User;
 
 /**
  * Unlike every other module, "Input" here is strictly self-only for every role,
- * including administrators — there is no "Kelola" tier that manages everyone else's
- * records. A submitted assessment becomes historical evidence; only Super Admin may
- * correct or remove it. The principal gets read-only access to everyone's.
+ * including administrators — nobody enters an assessment on someone else's behalf. A
+ * submitted assessment becomes historical evidence: Waka Kurikulum (and Super Admin) may
+ * still correct or remove one a teacher entered wrongly, which always leaves a trace.
+ * The principal, Waka Kurikulum and Admin Kurikulum can read everyone's.
  */
 class AssessmentPolicy
 {
@@ -24,7 +25,7 @@ class AssessmentPolicy
 
     public function view(User $user, Assessment $assessment): bool
     {
-        return $user->isSuperAdmin() || $user->isPrincipal() || $assessment->teacher_id === $user->id;
+        return $user->isSuperAdmin() || $user->isPrincipal() || $user->canMonitorAssessments() || $assessment->teacher_id === $user->id;
     }
 
     /**
@@ -37,17 +38,17 @@ class AssessmentPolicy
 
     public function update(User $user, Assessment $assessment): bool
     {
-        return $user->isSuperAdmin();
+        return $user->canCorrectDailyRecords();
     }
 
     public function delete(User $user, Assessment $assessment): bool
     {
-        return $user->isSuperAdmin();
+        return $user->canCorrectDailyRecords();
     }
 
     public function deleteAny(User $user): bool
     {
-        return false;
+        return $user->canCorrectDailyRecords();
     }
 
     public function restore(User $user, Assessment $assessment): bool

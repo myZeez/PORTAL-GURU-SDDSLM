@@ -3,9 +3,11 @@
 namespace App\Filament\Resources\AdditionalDuties;
 
 use App\Enums\DutyType;
+use App\Filament\Actions\AuditedBulkDeleteAction;
 use App\Filament\Resources\AdditionalDuties\Pages\ManageAdditionalDuties;
 use App\Models\AdditionalDuty;
 use BackedEnum;
+use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
@@ -94,6 +96,11 @@ class AdditionalDutyResource extends Resource
             ->recordActions([
                 EditAction::make(),
                 DeleteAction::make(),
+            ])
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    AuditedBulkDeleteAction::make(AdditionalDuty::class, 'tugas tambahan', null, null),
+                ]),
             ]);
     }
 

@@ -4,15 +4,14 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | PID Manager WhatsApp Number
+    | SIMPATI Portal
     |--------------------------------------------------------------------------
     |
-    | The WhatsApp number (international format, digits only, e.g. 6281234567890)
-    | that the pre-filled loan message for an approved PID reservation is sent to.
-    | Set PID_MANAGER_PHONE in .env to the real number.
+    | Where a pendamping wali kelas fills in SIMPATI, linked from the SIMPATI checklist.
+    | Set SIMPATI_URL in .env if the address ever changes.
     |
     */
 
-    'pid_manager_phone' => env('PID_MANAGER_PHONE', '6280000000000'),
+    'simpati_url' => env('SIMPATI_URL', 'https://simpati.sdislamdarussalam.id/'),
 
 ];

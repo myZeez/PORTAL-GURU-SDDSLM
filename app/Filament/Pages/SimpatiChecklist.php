@@ -144,6 +144,70 @@ class SimpatiChecklist extends Page
     }
 
     /**
+     * Whether to offer the link to the SIMPATI portal: only to someone who assists a class,
+     * since they are the ones who fill it in. Waka Kurikulum just monitors.
+     */
+    public function showsSimpatiLink(): bool
+    {
+        return auth()->user()->assistedClassroom()->exists();
+    }
+
+    public function getSimpatiUrl(): string
+    {
+        return (string) config('portal.simpati_url');
+    }
+
+    /**
+     * Today's saved check for the selected class, if there is one.
+     */
+    public function getTodayCheck(): ?SimpatiCheck
+    {
+        $classroom = $this->selectedClassroom();
+
+        return $classroom
+            ? SimpatiCheck::query()->where('classroom_id', $classroom->id)->whereDate('date', today()->toDateString())->first()
+            : null;
+    }
+
+    /**
+     * Whether SIMPATI has to be filled in today at all (not a weekend or a holiday).
+     */
+    public function isTodayRequired(): bool
+    {
+        return SimpatiCheck::isRequiredOn(today());
+    }
+
+    /**
+     * Mark today's SIMPATI as done for the selected class, once the pendamping is back from
+     * the SIMPATI portal. Unlike {@see self::toggle()} it only ever sets, so pressing it
+     * twice changes nothing.
+     */
+    public function markTodayDone(): void
+    {
+        $classroom = $this->selectedClassroom();
+
+        abort_unless($classroom !== null, 403);
+
+        if (! $this->isTodayRequired()) {
+            Notification::make()
+                ->warning()
+                ->title('Hari ini tidak perlu diisi SIMPATI.')
+                ->send();
+
+            return;
+        }
+
+        if (! $this->getTodayCheck()?->is_filled) {
+            SimpatiCheck::record($classroom, today(), true, auth()->user());
+        }
+
+        Notification::make()
+            ->success()
+            ->title('SIMPATI hari ini sudah ditandai selesai.')
+            ->send();
+    }
+
+    /**
      * Flip the checklist for one date of the selected class.
      */
     public function toggle(string $date): void

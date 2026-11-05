@@ -131,7 +131,7 @@
             <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-500 dark:text-gray-400">
                 <span class="inline-flex items-center gap-1.5"><span class="h-3 w-3 rounded bg-primary-100 ring-2 ring-primary-500 dark:bg-primary-400/20"></span>Jadwal Anda</span>
                 <span class="inline-flex items-center gap-1.5"><span class="h-3 w-3 rounded border border-dashed border-gray-400"></span>Kosong</span>
-                <span class="inline-flex items-center gap-1.5"><span class="h-3 w-3 rounded bg-gray-100 dark:bg-white/10"></span>Rutinitas sekolah</span>
+                <span class="inline-flex items-center gap-1.5"><span class="h-3 w-3 rounded bg-info-100 ring-1 ring-info-300 dark:bg-info-400/20 dark:ring-info-400/40"></span>Rutinitas sekolah</span>
                 @if ($this->canSeeClashes())
                     <span class="inline-flex items-center gap-1.5"><span class="h-3 w-3 rounded bg-danger-100 ring-2 ring-danger-500 dark:bg-danger-400/20"></span>Bentrok</span>
                 @endif
@@ -157,7 +157,7 @@
                     Tidak ada data untuk ditampilkan dengan filter ini.
                 </div>
             @else
-                <div @class(['overflow-x-auto rounded-2xl border border-gray-200 dark:border-white/10', 'hidden md:block' => ! $isAll])>
+                <div @class(['@container overflow-x-auto rounded-2xl border border-gray-200 dark:border-white/10', 'hidden md:block' => ! $isAll])>
                     <table class="w-full border-collapse text-sm">
                         <thead>
                             <tr class="bg-gray-50 dark:bg-white/5">
@@ -179,11 +179,12 @@
                                     </td>
 
                                     @if ($row['band'] !== null)
+                                        {{-- A routine spans every class, so its name is centred in the part of the table that is on screen (the Jam column stays put while the rest scrolls). --}}
                                         <td
                                             colspan="{{ count($grid['columns']) }}"
-                                            class="border-l border-gray-200 bg-gray-50 px-3 py-2 text-left text-xs font-semibold text-gray-500 dark:border-white/10 dark:bg-white/[0.02] dark:text-gray-400"
+                                            class="border-l border-info-200 bg-info-50 p-0 dark:border-info-400/20 dark:bg-info-400/10"
                                         >
-                                            <span class="sticky left-28 inline-block">{{ $row['band'] }}</span>
+                                            <div class="sticky left-28 w-[calc(100cqw-7rem)] px-3 py-2 text-center text-xs font-bold tracking-wide text-info-700 dark:text-info-300">{{ $row['band'] }}</div>
                                         </td>
                                     @else
                                         @foreach ($grid['columns'] as $column)

@@ -7,7 +7,7 @@
             @forelse ($substitutions as $substitution)
                 <tr>
                     <td>{{ $loop->iteration }}</td><td>{{ $substitution->schedule->classroom->label }}</td><td>{{ $substitution->schedule->subject->name }}</td>
-                    <td>{{ $substitution->schedule->timeSlot->label }}</td><td>{{ $substitution->schedule->teacher->name }}</td><td>{{ $substitution->substituteTeacher->name }}</td><td>{{ $substitution->reason }}</td>
+                    <td>{{ $substitution->schedule->timeSlot->label }}</td><td>{{ $substitution->schedule->teacher_name }}</td><td>{{ $substitution->substituteTeacher->name }}</td><td>{{ $substitution->reason }}</td>
                 </tr>
             @empty
                 <tr><td colspan="7" class="empty">Tidak ada penggantian guru untuk tanggal ini.</td></tr>

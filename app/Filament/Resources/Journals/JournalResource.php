@@ -2,12 +2,14 @@
 
 namespace App\Filament\Resources\Journals;
 
+use App\Filament\Actions\AuditedBulkDeleteAction;
+use App\Filament\Actions\AuditedDeleteAction;
 use App\Filament\Resources\Journals\Pages\ManageJournals;
 use App\Models\Journal;
 use App\Models\Schedule;
 use BackedEnum;
 use Carbon\Carbon;
-use Filament\Actions\DeleteAction;
+use Filament\Actions\BulkActionGroup;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
@@ -128,7 +130,12 @@ class JournalResource extends Resource
             ])
             ->recordActions([
                 EditAction::make(),
-                DeleteAction::make(),
+                AuditedDeleteAction::make(),
+            ])
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    AuditedBulkDeleteAction::make(Journal::class, 'jurnal', null, 'date'),
+                ]),
             ]);
     }
 
@@ -155,6 +162,7 @@ class JournalResource extends Resource
 
         return Schedule::query()
             ->where('day_of_week', $dayOfWeek)
+            ->whereNotNull('teacher_id')
             ->with(['classroom', 'subject', 'teacher', 'timeSlot'])
             ->get()
             ->mapWithKeys(fn (Schedule $schedule): array => [

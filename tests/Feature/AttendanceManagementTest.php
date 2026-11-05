@@ -51,15 +51,16 @@ class AttendanceManagementTest extends TestCase
             $user = User::factory()->withRoles($role)->create();
             $this->assertTrue($user->can('create', TeacherAttendance::class));
             $this->assertTrue($user->can('update', $record));
+            // Removing a record that was filled in wrongly goes with it, and is always logged.
+            $this->assertTrue($user->can('delete', $record));
         }
 
         foreach ([null, Role::AdminKurikulum, Role::KepalaSekolah, Role::WakaSarpras, Role::KoordinatorEkskul] as $role) {
             $user = $role === null ? User::factory()->create() : User::factory()->withRoles($role)->create();
             $this->assertFalse($user->can('create', TeacherAttendance::class));
             $this->assertFalse($user->can('update', $record));
+            $this->assertFalse($user->can('delete', $record));
         }
-
-        $this->assertFalse($this->waka()->can('delete', $record));
     }
 
     public function test_waka_kurikulum_fills_a_missing_day_for_a_teacher_and_it_is_logged(): void
@@ -304,7 +305,7 @@ class AttendanceManagementTest extends TestCase
         $this->actingAs($waka);
 
         Livewire::test(ManageTeacherAttendances::class)
-            ->callAction('reopenDate', data: ['date' => '2026-10-23', 'reason' => 'Server sempat bermasalah.'])
+            ->callAction('reopenDate', data: ['from' => '2026-10-23', 'to' => '2026-10-23', 'reason' => 'Server sempat bermasalah.'])
             ->assertHasNoActionErrors();
 
         $this->assertTrue(AttendanceReopening::isOpenFor('2026-10-23'));
@@ -313,17 +314,115 @@ class AttendanceManagementTest extends TestCase
         $this->assertSame(0, $waka->notifications()->count());
     }
 
-    public function test_only_effective_recent_past_dates_can_be_reopened(): void
+    public function test_only_effective_past_dates_within_the_school_year_can_be_reopened(): void
     {
+        Semester::factory()->active()->create(['starts_on' => '2026-07-13']);
+
         $this->actingAs($this->waka());
 
-        foreach (['2026-10-24' => 'Sabtu bukan hari kerja.', '2026-10-27' => 'Besok belum lewat.', '2026-06-01' => 'Terlalu lama.'] as $date => $reason) {
+        $cases = [
+            'Sabtu dan Minggu saja bukan hari kerja' => ['2026-10-24', '2026-10-25', 'to'],
+            'Besok belum lewat' => ['2026-10-23', '2026-10-27', 'to'],
+            'Sebelum semester dimulai' => ['2026-06-01', '2026-06-05', 'from'],
+            'Sampai lebih awal dari mulai' => ['2026-10-23', '2026-10-20', 'to'],
+        ];
+
+        foreach ($cases as $reason => [$from, $to, $field]) {
             Livewire::test(ManageTeacherAttendances::class)
-                ->callAction('reopenDate', data: ['date' => $date, 'reason' => $reason])
-                ->assertHasActionErrors(['date']);
+                ->callAction('reopenDate', data: ['from' => $from, 'to' => $to, 'reason' => $reason])
+                ->assertHasActionErrors([$field]);
         }
 
         $this->assertSame(0, AttendanceReopening::count());
+    }
+
+    public function test_a_whole_stretch_can_be_reopened_from_the_start_of_the_semester_skipping_days_off(): void
+    {
+        $semester = Semester::factory()->active()->create(['starts_on' => '2026-07-13']);
+        CalendarDay::factory()->create(['semester_id' => $semester->id, 'date' => '2026-08-17', 'status' => CalendarDayStatus::Libur]);
+        $teacher = User::factory()->create();
+
+        $this->actingAs($this->waka());
+
+        Livewire::test(ManageTeacherAttendances::class)
+            ->callAction('reopenDate', data: ['from' => '2026-07-13', 'to' => '2026-10-23', 'reason' => 'Rapel absensi sejak awal semester.'])
+            ->assertHasNoActionErrors();
+
+        // Every Monday to Friday between the two dates, minus the one holiday.
+        $expected = collect(range(0, Carbon::parse('2026-07-13')->diffInDays('2026-10-23')))
+            ->map(fn (int $offset): Carbon => Carbon::parse('2026-07-13')->addDays($offset))
+            ->filter(fn (Carbon $date): bool => $date->isWeekday() && $date->toDateString() !== '2026-08-17')
+            ->count();
+
+        $this->assertGreaterThan(60, $expected);
+        $this->assertSame($expected, AttendanceReopening::query()->open()->count());
+        $this->assertTrue(AttendanceReopening::isOpenFor('2026-07-13'));
+        $this->assertTrue(AttendanceReopening::isOpenFor('2026-10-23'));
+        $this->assertFalse(AttendanceReopening::isOpenFor('2026-07-18')); // a Saturday
+        $this->assertFalse(AttendanceReopening::isOpenFor('2026-08-17')); // a holiday
+
+        // One notification per teacher, however many days were opened, naming the stretch.
+        $this->assertSame(1, $teacher->notifications()->count());
+        $this->assertStringContainsString('13 Juli 2026 sampai 23 Oktober 2026', $teacher->notifications()->first()->data['body']);
+    }
+
+    public function test_reopening_again_does_not_duplicate_and_brings_back_a_closed_date(): void
+    {
+        AttendanceReopening::factory()->closed()->create(['date' => '2026-10-22']);
+        $this->actingAs($this->waka());
+
+        Livewire::test(ManageTeacherAttendances::class)
+            ->callAction('reopenDate', data: ['from' => '2026-10-21', 'to' => '2026-10-23', 'reason' => 'Dibuka lagi.'])
+            ->assertHasNoActionErrors();
+
+        Livewire::test(ManageTeacherAttendances::class)
+            ->callAction('reopenDate', data: ['from' => '2026-10-21', 'to' => '2026-10-23', 'reason' => 'Dibuka lagi.'])
+            ->assertHasNoActionErrors();
+
+        $this->assertSame(3, AttendanceReopening::count());
+        $this->assertSame(3, AttendanceReopening::query()->open()->count());
+    }
+
+    public function test_the_reopen_form_starts_from_the_first_day_of_the_semester(): void
+    {
+        Semester::factory()->create(['starts_on' => '2026-07-13']);
+        Semester::factory()->create(['starts_on' => '2026-01-05']);
+
+        $this->assertSame('2026-01-05', ManageTeacherAttendances::earliestReopenableDate()->toDateString());
+    }
+
+    public function test_a_teacher_sees_the_reopened_dates_by_month_and_moves_on_to_the_next_after_saving(): void
+    {
+        $teacher = User::factory()->create();
+
+        foreach (['2026-09-29', '2026-10-21', '2026-10-22'] as $date) {
+            AttendanceReopening::factory()->create(['date' => $date]);
+        }
+
+        $this->actingAs($teacher);
+
+        $component = Livewire::test(AttendanceSelf::class);
+
+        $html = $component->html();
+
+        $this->assertStringContainsString('3 tanggal belum diisi', $html);
+        $this->assertStringContainsString('Isi dari yang paling awal', $html);
+        $this->assertStringContainsString('September 2026 · 1 tanggal', $html);
+        $this->assertStringContainsString('Oktober 2026 · 2 tanggal', $html);
+
+        $component
+            ->call('selectDate', '2026-09-29')
+            ->fillForm(['status' => AttendanceStatus::Hadir->value])
+            ->call('save')
+            ->assertSet('selectedDate', '2026-10-21');
+
+        $component
+            ->fillForm(['status' => AttendanceStatus::Izin->value])
+            ->call('save')
+            ->assertSet('selectedDate', '2026-10-22');
+
+        $this->assertDatabaseHas('teacher_attendances', ['teacher_id' => $teacher->id, 'date' => '2026-09-29', 'status' => 'hadir']);
+        $this->assertDatabaseHas('teacher_attendances', ['teacher_id' => $teacher->id, 'date' => '2026-10-21', 'status' => 'izin']);
     }
 
     public function test_a_teacher_can_fill_a_reopened_date_but_not_a_closed_or_never_opened_one(): void

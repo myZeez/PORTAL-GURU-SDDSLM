@@ -200,4 +200,26 @@ class TeacherAttendanceAccessTest extends TestCase
             ->call('save')
             ->assertHasFormErrors(['leave_starts_on', 'leave_ends_on']);
     }
+
+    public function test_the_late_indicator_is_gone_from_every_attendance_screen(): void
+    {
+        $this->travelTo(Carbon::parse('2026-09-14 07:00:00'));
+
+        $teacher = User::factory()->create();
+        // Filled two days after the date it is for: this used to be flagged "Terlambat".
+        TeacherAttendance::factory()->create([
+            'teacher_id' => $teacher->id,
+            'date' => '2026-09-14',
+            'filled_at' => '2026-09-16 08:00:00',
+        ]);
+
+        $this->actingAs(User::factory()->withRoles(Role::WakaKurikulum)->create());
+
+        $this->assertStringNotContainsString('Terlambat', Livewire::test(ManageTeacherAttendances::class)->html());
+
+        $this->actingAs($teacher);
+
+        $this->assertStringNotContainsString('Terlambat', Livewire::test(AttendanceSelf::class)->html());
+        $this->assertNull(TeacherAttendance::query()->first()->getAttributeValue('is_late'));
+    }
 }

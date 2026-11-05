@@ -45,6 +45,43 @@
                 </div>
             </div>
 
+            @if ($this->showsSimpatiLink())
+                @php $todayDone = (bool) $this->getTodayCheck()?->is_filled; @endphp
+                <div class="flex flex-col gap-3 rounded-2xl border border-primary-200 bg-primary-50/60 p-4 dark:border-primary-400/20 dark:bg-primary-400/5">
+                    <div>
+                        <p class="text-sm font-bold text-gray-950 dark:text-white">Isi SIMPATI hari ini</p>
+                        <ol class="mt-1 list-decimal space-y-0.5 pl-4 text-xs text-gray-600 dark:text-gray-400">
+                            <li>Buka SIMPATI. Halamannya terbuka di tab baru, jadi SiPeka tetap terbuka di sini.</li>
+                            <li>Isi SIMPATI untuk kelas Anda.</li>
+                            <li>Kembali ke halaman ini, lalu tekan Selesai.</li>
+                        </ol>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2">
+                        <x-filament::button
+                            tag="a"
+                            :href="$this->getSimpatiUrl()"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            icon="heroicon-m-arrow-top-right-on-square"
+                            color="gray"
+                        >
+                            Buka SIMPATI
+                        </x-filament::button>
+
+                        @if (! $this->isTodayRequired())
+                            <span class="text-xs text-gray-500 dark:text-gray-400">Hari ini bukan hari wajib SIMPATI.</span>
+                        @elseif ($todayDone)
+                            <x-filament::badge color="success" icon="heroicon-m-check">Selesai hari ini</x-filament::badge>
+                        @else
+                            <x-filament::button wire:click="markTodayDone" wire:loading.attr="disabled" color="success" icon="heroicon-m-check">
+                                Selesai
+                            </x-filament::button>
+                        @endif
+                    </div>
+                </div>
+            @endif
+
             <div class="flex items-center justify-between rounded-2xl border border-gray-200 bg-white p-4 dark:border-white/10 dark:bg-gray-900">
                 <div>
                     <p class="text-sm font-bold text-gray-950 dark:text-white">Penyelesaian bulan ini</p>

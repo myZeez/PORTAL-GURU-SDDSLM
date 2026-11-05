@@ -7,7 +7,7 @@
         Kosong
     </div>
 @elseif ($cell['type'] === 'routine')
-    <div class="rounded-lg bg-gray-100 px-2 py-1 text-center text-[0.65rem] font-semibold text-gray-500 dark:bg-white/5 dark:text-gray-400">
+    <div class="rounded-lg bg-info-50 px-2 py-1 text-center text-[0.65rem] font-bold tracking-wide text-info-700 ring-1 ring-info-200 dark:bg-info-400/10 dark:text-info-300 dark:ring-info-400/20">
         {{ $cell['label'] }}
     </div>
 @else

@@ -5,7 +5,6 @@ namespace App\Filament\Pages;
 use App\Enums\CalendarDayStatus;
 use App\Enums\SchoolDay;
 use App\Models\CalendarDay;
-use App\Models\DailyRoutine;
 use App\Models\Schedule;
 use App\Models\Semester;
 use App\Models\Substitution;
@@ -20,10 +19,11 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 /**
- * One teacher's own timetable: whole-school routines plus their own teaching slots, merged
- * into a single time-ordered agenda, viewable per weekday, for the whole week, or for a
- * specific date. Every query is scoped to the signed-in teacher, so nobody can see a
- * colleague's personal schedule here; the school-wide view lives on "Matriks Jadwal".
+ * One teacher's own timetable: only the lessons they are assigned to teach or cover, in a
+ * single time-ordered agenda, viewable per weekday, for the whole week, or for a specific
+ * date. School-wide routines (breakfast, ceremony, break) are deliberately left out; they
+ * live on "Matriks Jadwal". Every query is scoped to the signed-in teacher, so nobody can
+ * see a colleague's personal schedule here.
  */
 class MySchedule extends Page
 {
@@ -123,7 +123,7 @@ class MySchedule extends Page
      * Routines and this teacher's own schedule slots for the selected weekday (or the
      * picked date), merged into one list ordered by time.
      *
-     * @return list<array{starts_at: string, start: string, end: string, label: string, type: 'routine'|'teaching'|'covering', subtitle: ?string, note: ?string}>
+     * @return list<array{starts_at: string, start: string, end: string, label: string, type: 'teaching'|'covering', subtitle: ?string, note: ?string}>
      */
     public function getEntries(): array
     {
@@ -181,16 +181,10 @@ class MySchedule extends Page
     }
 
     /**
-     * @return list<array{starts_at: string, start: string, end: string, label: string, type: 'routine'|'teaching'|'covering', subtitle: ?string, note: ?string}>
+     * @return list<array{starts_at: string, start: string, end: string, label: string, type: 'teaching'|'covering', subtitle: ?string, note: ?string}>
      */
     private function entriesFor(SchoolDay $day, ?CarbonInterface $date = null): array
     {
-        $routines = DailyRoutine::query()
-            ->where('day_of_week', $day->value)
-            ->with('timeSlot')
-            ->get()
-            ->map(fn (DailyRoutine $routine): array => $this->entry($routine->timeSlot, $routine->label, 'routine', 'Rutinitas · Semua Kelas'));
-
         $own = $this->ownSchedules($day, $date);
         $substitutedAway = $date ? $this->substitutionsOn($date, $own->pluck('id')->all()) : collect();
 
@@ -208,7 +202,7 @@ class MySchedule extends Page
 
         $covering = $date ? $this->coveringSlots($date) : collect();
 
-        return $routines->concat($teaching)->concat($covering)->sortBy('starts_at')->values()->all();
+        return $teaching->concat($covering)->sortBy('starts_at')->values()->all();
     }
 
     /**
@@ -280,7 +274,7 @@ class MySchedule extends Page
                 $substitution->schedule->subject->name,
                 'covering',
                 $substitution->schedule->classroom->label,
-                "Menggantikan {$substitution->schedule->teacher->name}",
+                "Menggantikan {$substitution->schedule->teacher_name}",
             ));
     }
 

@@ -150,4 +150,63 @@ class TaskAccessTest extends TestCase
         $this->assertSame('Nanti', $assignments->first()->task->title);
         $this->assertSame('Segera', $assignments->last()->task->title);
     }
+
+    public function test_the_all_teachers_option_picks_every_active_teacher_and_nobody_else(): void
+    {
+        $teachers = User::factory()->count(3)->create();
+        $waka = User::factory()->withRoles(Role::WakaKurikulum)->create();
+        User::factory()->inactive()->create();
+        User::factory()->withRoles(Role::KepalaSekolah)->create();
+        User::factory()->withRoles(Role::SuperAdmin)->create();
+
+        $this->actingAs($waka);
+
+        $expected = $teachers->pluck('id')->push($waka->id)->sort()->values()->all();
+
+        Livewire::test(ManageTasks::class)
+            ->mountAction('create')
+            ->set('mountedActions.0.data.all_teachers', true)
+            ->assertSet('mountedActions.0.data.assignees', fn (array $ids): bool => collect($ids)->map(fn ($id): int => (int) $id)->sort()->values()->all() === $expected);
+    }
+
+    public function test_choosing_all_teachers_saves_one_assignment_per_teacher(): void
+    {
+        $teachers = User::factory()->count(3)->create();
+        $waka = User::factory()->withRoles(Role::WakaKurikulum)->create();
+
+        $this->actingAs($waka);
+
+        Livewire::test(ManageTasks::class)
+            ->mountAction('create')
+            ->set('mountedActions.0.data.all_teachers', true)
+            ->set('mountedActions.0.data.title', 'Kumpulkan modul ajar')
+            ->set('mountedActions.0.data.due_on', '2026-11-20')
+            ->callMountedAction()
+            ->assertHasNoActionErrors();
+
+        $task = Task::query()->where('title', 'Kumpulkan modul ajar')->firstOrFail();
+
+        $this->assertSame(4, $task->taskAssignees()->count());
+        $this->assertSame(4, $task->taskAssignees()->distinct('user_id')->count('user_id'));
+        $this->assertEqualsCanonicalizing($teachers->pluck('id')->push($waka->id)->all(), $task->assignees->pluck('id')->all());
+    }
+
+    public function test_untoggling_clears_the_recipients_and_removing_one_teacher_unticks_the_option(): void
+    {
+        $teachers = User::factory()->count(2)->create();
+
+        $this->actingAs(User::factory()->withRoles(Role::AdminKurikulum)->create());
+
+        $component = Livewire::test(ManageTasks::class)
+            ->mountAction('create')
+            ->set('mountedActions.0.data.all_teachers', true)
+            ->set('mountedActions.0.data.assignees', [$teachers->first()->id]);
+
+        $component->assertSet('mountedActions.0.data.all_teachers', false);
+
+        $component
+            ->set('mountedActions.0.data.all_teachers', true)
+            ->set('mountedActions.0.data.all_teachers', false)
+            ->assertSet('mountedActions.0.data.assignees', []);
+    }
 }

@@ -38,6 +38,17 @@ class ExtracurricularAttendanceResource extends Resource
 
     protected static ?string $pluralModelLabel = 'absensi ekstrakurikuler';
 
+    protected static bool $shouldRegisterNavigation = false;
+
+    /**
+     * The menu was retired at the school's request: it is neither listed nor reachable by
+     * URL for anyone. The records already saved stay in the database.
+     */
+    public static function canAccess(): bool
+    {
+        return false;
+    }
+
     /**
      * Every guru pendamping only ever logs their own attendance ("Input" applies even to
      * curriculum management) — the principal, extracurricular management, and Super

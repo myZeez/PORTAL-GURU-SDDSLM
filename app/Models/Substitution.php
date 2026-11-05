@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Filament\Pages\SubstitutionSelf;
+use App\Models\Concerns\HasAuditTrail;
 use Carbon\Carbon;
 use Database\Factories\SubstitutionFactory;
 use Filament\Actions\Action;
@@ -17,6 +18,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Substitution extends Model
 {
     /** @use HasFactory<SubstitutionFactory> */
+    use HasAuditTrail {
+        updateWithAudit as private updateAndLog;
+    }
+
     use HasFactory;
 
     /**
@@ -31,6 +36,64 @@ class Substitution extends Model
         static::created(function (self $substitution): void {
             $substitution->notifySubstituteTeacher();
         });
+    }
+
+    /**
+     * Whether the user may correct or remove this substitution. Whoever manages the daily
+     * records may always; the teacher who filed it may only until the day has passed and
+     * nobody has written a journal for that lesson yet, so a finished day stays as it was.
+     */
+    public function canBeChangedBy(User $user): bool
+    {
+        if ($user->canCorrectDailyRecords()) {
+            return true;
+        }
+
+        return $this->created_by !== null
+            && $this->created_by === $user->id
+            && $this->date->gte(today())
+            && ! Journal::query()->where('schedule_id', $this->schedule_id)->whereDate('date', $this->date->toDateString())->exists();
+    }
+
+    /**
+     * Change the substitution and leave a trace; a newly named substitute is told, like
+     * the one named when it was first filed.
+     *
+     * @param  array<string, mixed>  $attributes
+     */
+    public function updateWithAudit(User $actor, array $attributes, ?string $reason = null): void
+    {
+        $previousSubstitute = $this->substitute_teacher_id;
+
+        $this->updateAndLog($actor, $attributes, $reason);
+
+        if ($this->substitute_teacher_id !== $previousSubstitute) {
+            $this->unsetRelation('substituteTeacher');
+            $this->notifySubstituteTeacher();
+        }
+    }
+
+    public function auditLabel(): string
+    {
+        $this->loadMissing('schedule.classroom', 'schedule.subject');
+
+        return "{$this->schedule->classroom->label} — {$this->schedule->subject->name} · {$this->date->format('d/m/Y')}";
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function auditSnapshot(): array
+    {
+        $this->loadMissing('schedule.classroom', 'schedule.subject', 'schedule.timeSlot', 'schedule.teacher', 'substituteTeacher');
+
+        return [
+            'Tanggal' => $this->date->translatedFormat('d F Y'),
+            'Jadwal' => "{$this->schedule->classroom->label} — {$this->schedule->subject->name} ({$this->schedule->timeSlot->label})",
+            'Guru yang digantikan' => $this->schedule->teacher_name,
+            'Guru pengganti' => $this->substituteTeacher->name,
+            'Alasan' => (string) $this->reason,
+        ];
     }
 
     /**

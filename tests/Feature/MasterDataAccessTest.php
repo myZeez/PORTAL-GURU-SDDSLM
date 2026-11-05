@@ -126,4 +126,20 @@ class MasterDataAccessTest extends TestCase
         Livewire::test(ManageSubjects::class)
             ->assertActionHidden('create');
     }
+
+    public function test_a_subject_can_be_given_a_team_that_teaches_it(): void
+    {
+        $this->actingAs(User::factory()->withRoles(Role::WakaKurikulum)->create());
+
+        Livewire::test(ManageSubjects::class)
+            ->callAction('create', data: [
+                'name' => 'Tahfiz',
+                'counts_toward_teaching_load' => false,
+                'allows_concurrent_scheduling' => false,
+                'team_name' => 'Tim Tahfiz',
+            ])
+            ->assertHasNoActionErrors();
+
+        $this->assertDatabaseHas('subjects', ['name' => 'Tahfiz', 'team_name' => 'Tim Tahfiz']);
+    }
 }

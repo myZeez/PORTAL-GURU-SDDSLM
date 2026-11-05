@@ -22,6 +22,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rules\Unique;
 
 /**
@@ -68,48 +69,7 @@ class SubstitutionSelf extends Page
     {
         return $schema
             ->components([
-                Form::make([
-                    DatePicker::make('date')
-                        ->label('Tanggal')
-                        ->required()
-                        ->live(),
-                    Select::make('schedule_id')
-                        ->label('Jadwal saya yang digantikan')
-                        ->options(fn (Get $get): array => $this->scheduleOptions($get('date')))
-                        ->required()
-                        ->searchable()
-                        ->rules([
-                            fn (): Closure => function (string $attribute, mixed $value, Closure $fail): void {
-                                $schedule = Schedule::find($value);
-
-                                if (! $schedule || $schedule->teacher_id !== auth()->id()) {
-                                    $fail('Jadwal ini bukan jadwal mengajar Anda.');
-                                }
-                            },
-                        ])
-                        ->unique(
-                            table: Substitution::class,
-                            column: 'schedule_id',
-                            modifyRuleUsing: fn (Unique $rule, Get $get): Unique => $rule->where('date', $get('date')),
-                        )
-                        ->validationMessages([
-                            'unique' => 'Jadwal ini sudah punya penggantian pada tanggal ini.',
-                        ]),
-                    Select::make('substitute_teacher_id')
-                        ->label('Guru pengganti')
-                        ->options(fn (): array => User::query()
-                            ->whereKeyNot(auth()->id())
-                            ->where(fn (Builder $query): Builder => $query->whereNull('role')->orWhere('role', '!=', Role::KepalaSekolah->value))
-                            ->orderBy('name')
-                            ->pluck('name', 'id')
-                            ->all())
-                        ->required()
-                        ->searchable(),
-                    Textarea::make('reason')
-                        ->label('Alasan')
-                        ->required()
-                        ->rows(2),
-                ])
+                Form::make($this->fields())
                     ->livewireSubmitHandler('save')
                     ->footer([
                         SchemaActions::make([
@@ -120,6 +80,60 @@ class SubstitutionSelf extends Page
                     ]),
             ])
             ->statePath('data');
+    }
+
+    /**
+     * The fields of a substitution, as filed on this page and as changed afterwards.
+     *
+     * @param  int|null  $ignoreId  the substitution being changed, which may keep its own schedule and date
+     * @return list<DatePicker|Select|Textarea>
+     */
+    private function fields(?int $ignoreId = null): array
+    {
+        return [
+            DatePicker::make('date')
+                ->label('Tanggal')
+                ->required()
+                ->minDate(fn (): ?Carbon => $ignoreId && ! auth()->user()->canCorrectDailyRecords() ? today() : null)
+                ->live(),
+            Select::make('schedule_id')
+                ->label('Jadwal saya yang digantikan')
+                ->options(fn (Get $get): array => $this->scheduleOptions($get('date')))
+                ->required()
+                ->searchable()
+                ->rules([
+                    fn (): Closure => function (string $attribute, mixed $value, Closure $fail): void {
+                        $schedule = Schedule::find($value);
+
+                        if (! $schedule || $schedule->teacher_id !== auth()->id()) {
+                            $fail('Jadwal ini bukan jadwal mengajar Anda.');
+                        }
+                    },
+                ])
+                ->unique(
+                    table: Substitution::class,
+                    column: 'schedule_id',
+                    ignorable: fn (): ?Substitution => $ignoreId ? Substitution::query()->find($ignoreId) : null,
+                    modifyRuleUsing: fn (Unique $rule, Get $get): Unique => $rule->where('date', $get('date')),
+                )
+                ->validationMessages([
+                    'unique' => 'Jadwal ini sudah punya penggantian pada tanggal ini.',
+                ]),
+            Select::make('substitute_teacher_id')
+                ->label('Guru pengganti')
+                ->options(fn (): array => User::query()
+                    ->whereKeyNot(auth()->id())
+                    ->where(fn (Builder $query): Builder => $query->whereNull('role')->orWhere('role', '!=', Role::KepalaSekolah->value))
+                    ->orderBy('name')
+                    ->pluck('name', 'id')
+                    ->all())
+                ->required()
+                ->searchable(),
+            Textarea::make('reason')
+                ->label('Alasan')
+                ->required()
+                ->rows(2),
+        ];
     }
 
     public function save(): void
@@ -136,6 +150,60 @@ class SubstitutionSelf extends Page
             ->success()
             ->title('Penggantian tersimpan.')
             ->send();
+    }
+
+    /**
+     * Change a substitution this teacher filed. The record is looked up and authorised again
+     * on the server, whatever id the button sent.
+     */
+    public function editSubstitutionAction(): Action
+    {
+        return Action::make('editSubstitution')
+            ->modalHeading('Ubah penggantian')
+            ->modalSubmitActionLabel('Simpan perubahan')
+            ->fillForm(fn (array $arguments): array => $this->changeable($arguments)->only(['date', 'schedule_id', 'substitute_teacher_id', 'reason']))
+            ->schema(fn (array $arguments): array => $this->fields((int) ($arguments['substitution'] ?? 0)))
+            ->action(function (array $data, array $arguments): void {
+                $this->changeable($arguments)->updateWithAudit(auth()->user(), $data);
+
+                Notification::make()->success()->title('Penggantian diubah.')->send();
+            });
+    }
+
+    /**
+     * Remove a substitution this teacher filed, after a confirmation that asks why.
+     */
+    public function deleteSubstitutionAction(): Action
+    {
+        return Action::make('deleteSubstitution')
+            ->color('danger')
+            ->modalHeading('Hapus penggantian ini?')
+            ->modalDescription('Penggantian yang dihapus tidak bisa dikembalikan. Penghapusan dicatat di riwayat perubahan beserta alasannya.')
+            ->modalSubmitActionLabel('Ya, hapus')
+            ->schema([
+                Textarea::make('reason')
+                    ->label('Alasan menghapus')
+                    ->required()
+                    ->maxLength(500)
+                    ->rows(2),
+            ])
+            ->action(function (array $data, array $arguments): void {
+                $this->changeable($arguments)->deleteWithAudit(auth()->user(), $data['reason']);
+
+                Notification::make()->success()->title('Penggantian dihapus.')->send();
+            });
+    }
+
+    /**
+     * @param  array<string, mixed>  $arguments
+     */
+    private function changeable(array $arguments): Substitution
+    {
+        $substitution = Substitution::query()->findOrFail((int) ($arguments['substitution'] ?? 0));
+
+        Gate::authorize('update', $substitution);
+
+        return $substitution;
     }
 
     /**

@@ -6,27 +6,26 @@ use App\Models\Cocurricular;
 use App\Models\User;
 
 /**
- * Submissions form a shared feed everyone can browse. Curriculum management and the
- * homeroom or assistant teacher (wali/pendamping) may submit a classroom's record.
- * Once submitted, only Super Admin may correct or remove it.
+ * Only whoever sets the kokurikuler schedule and the wali kelas have the menu, and they
+ * browse the shared feed of submissions. The wali kelas of a class (not the pendamping)
+ * submits that class's record; Waka Kurikulum may submit for any class. Once submitted,
+ * only Super Admin may correct or remove it.
  */
 class CocurricularPolicy
 {
     public function viewAny(User $user): bool
     {
-        return true;
+        return $user->canAccessCocurriculars();
     }
 
     public function view(User $user, Cocurricular $cocurricular): bool
     {
-        return true;
+        return $user->canAccessCocurriculars();
     }
 
     public function create(User $user): bool
     {
-        return $user->isCurriculumManager()
-            || $user->homeroomClassroom()->exists()
-            || $user->assistedClassroom()->exists();
+        return $user->canAccessCocurriculars();
     }
 
     public function update(User $user, Cocurricular $cocurricular): bool

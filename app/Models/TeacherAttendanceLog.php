@@ -26,6 +26,8 @@ class TeacherAttendanceLog extends Model
 
     public const ACTION_CORRECTED = 'corrected';
 
+    public const ACTION_DELETED = 'deleted';
+
     protected static function booted(): void
     {
         static::updating(function (): never {

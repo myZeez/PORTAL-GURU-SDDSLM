@@ -52,6 +52,10 @@ class SubjectResource extends Resource
                     ->label('Boleh dijadwalkan bareng, khusus hari Kamis')
                     ->helperText('Nyalakan untuk mapel yang wajar diajar ke beberapa kelas sekaligus di hari Kamis (mis. PJOK, PRAMUKA), supaya tidak dianggap bentrok jadwal.')
                     ->default(false),
+                TextInput::make('team_name')
+                    ->label('Nama tim pengajar')
+                    ->helperText('Isi bila mapel ini diajar oleh sebuah tim, bukan satu guru (mis. Tim UMMI). Di jadwal, kolom guru terisi nama tim ini otomatis, dan jadwalnya tidak masuk JP guru mana pun. Kosongkan untuk mapel biasa.')
+                    ->maxLength(255),
             ]);
     }
 
@@ -72,6 +76,9 @@ class SubjectResource extends Resource
                     ->label('Boleh bareng (Kamis)')
                     ->boolean()
                     ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('team_name')
+                    ->label('Tim pengajar')
+                    ->placeholder('—'),
             ])
             ->recordActions([
                 EditAction::make(),

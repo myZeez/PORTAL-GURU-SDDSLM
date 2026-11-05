@@ -34,7 +34,7 @@ class ImmutableOperationalRecordAccessTest extends TestCase
     }
 
     #[DataProvider('actorsWithoutCorrectionAuthority')]
-    public function test_only_super_admin_can_change_completed_operational_records(?Role $role): void
+    public function test_completed_records_can_only_be_changed_by_those_with_correction_authority(?Role $role): void
     {
         $actor = $role === null
             ? User::factory()->create()
@@ -50,12 +50,16 @@ class ImmutableOperationalRecordAccessTest extends TestCase
         ];
 
         foreach ($records as $record) {
-            // Waka Kurikulum alone may correct attendance (with a reason and an audit
-            // entry); every other record, and every deletion, stays with Super Admin.
-            $isAttendanceCorrectedByWaka = $record instanceof TeacherAttendance && $role === Role::WakaKurikulum;
+            // Waka Kurikulum alone may step in on daily records, always leaving a trace: it
+            // corrects attendance, substitutions and assessments, and removes attendance,
+            // journals, substitutions and assessments that were filled in wrongly. Everything
+            // else stays with Super Admin.
+            $isWaka = $role === Role::WakaKurikulum;
+            $expectedUpdate = $isWaka && ($record instanceof TeacherAttendance || $record instanceof Substitution || $record instanceof Assessment);
+            $expectedDelete = $isWaka && ($record instanceof TeacherAttendance || $record instanceof Journal || $record instanceof Substitution || $record instanceof Assessment);
 
-            $this->assertSame($isAttendanceCorrectedByWaka, $actor->can('update', $record));
-            $this->assertFalse($actor->can('delete', $record));
+            $this->assertSame($expectedUpdate, $actor->can('update', $record), $record::class.' update');
+            $this->assertSame($expectedDelete, $actor->can('delete', $record), $record::class.' delete');
         }
     }
 

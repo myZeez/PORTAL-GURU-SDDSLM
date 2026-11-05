@@ -59,26 +59,6 @@ class TeacherAttendanceTest extends TestCase
         $this->assertTrue(TeacherAttendance::isFillableDate($monday));
     }
 
-    public function test_it_is_late_when_filled_after_the_date_it_is_for(): void
-    {
-        $attendance = TeacherAttendance::factory()->create([
-            'date' => '2026-09-10',
-            'filled_at' => '2026-09-11 08:00:00',
-        ]);
-
-        $this->assertTrue($attendance->is_late);
-    }
-
-    public function test_it_is_not_late_when_filled_on_the_same_date(): void
-    {
-        $attendance = TeacherAttendance::factory()->create([
-            'date' => '2026-09-10',
-            'filled_at' => '2026-09-10 06:15:00',
-        ]);
-
-        $this->assertFalse($attendance->is_late);
-    }
-
     public function test_each_attendance_status_has_the_expected_credit_weight(): void
     {
         $this->assertSame(100, AttendanceStatus::Hadir->attendanceWeight());

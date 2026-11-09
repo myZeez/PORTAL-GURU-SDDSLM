@@ -6,6 +6,7 @@ namespace App\Models;
 use App\Enums\Education;
 use App\Enums\Gender;
 use App\Enums\Role;
+use App\Models\Concerns\HasAuditTrail;
 use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Models\Contracts\HasAvatar;
@@ -29,7 +30,7 @@ use Illuminate\Support\Str;
 class User extends Authenticatable implements FilamentUser, HasAvatar
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasAuditTrail, HasFactory, Notifiable;
 
     /**
      * The model's default values for attributes.
@@ -57,6 +58,31 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
             'birthdate' => 'date',
             'gender' => Gender::class,
             'last_education' => Education::class,
+        ];
+    }
+
+    /**
+     * A short description of the account, used as the heading of its change history.
+     */
+    public function auditLabel(): string
+    {
+        return $this->name;
+    }
+
+    /**
+     * The account details worth tracing, by readable name. The password is never included.
+     *
+     * @return array<string, string>
+     */
+    public function auditSnapshot(): array
+    {
+        return [
+            'Kode' => (string) $this->code,
+            'Nama' => $this->name,
+            'Jabatan' => (string) $this->position,
+            'Email' => $this->email,
+            'Peran' => $this->role?->getLabel() ?? 'Guru',
+            'Status' => $this->is_active ? 'Aktif' : 'Tidak aktif',
         ];
     }
 

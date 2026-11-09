@@ -49,8 +49,8 @@ class SubjectResource extends Resource
                     ->helperText('Matikan untuk kegiatan yang tidak masuk beban mengajar, seperti Penguatan Hafalan dan PRAMUKA.')
                     ->default(true),
                 Toggle::make('allows_concurrent_scheduling')
-                    ->label('Boleh dijadwalkan bareng, khusus hari Kamis')
-                    ->helperText('Nyalakan untuk mapel yang wajar diajar ke beberapa kelas sekaligus di hari Kamis (mis. PJOK, PRAMUKA), supaya tidak dianggap bentrok jadwal.')
+                    ->label('Boleh diajar ke beberapa rombel sekaligus')
+                    ->helperText('Nyalakan untuk mapel yang wajar diajar guru yang sama ke beberapa rombel pada jam yang sama (mis. PJOK), di hari apa pun, supaya tidak dianggap bentrok. Guru itu tetap bentrok bila di jam yang sama mengajar mapel lain.')
                     ->default(false),
                 TextInput::make('team_name')
                     ->label('Nama tim pengajar')

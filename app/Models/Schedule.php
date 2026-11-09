@@ -126,13 +126,13 @@ class Schedule extends Model
     }
 
     /**
-     * Whether a day + subject combination is exempt from clash checking: some subjects
-     * (PJOK, PRAMUKA) are deliberately taught to several classes at once on Kamis, so a
-     * teacher or classroom appearing more than once in the same slot that day is expected.
+     * Whether a subject may be taught to several classes at once (PJOK is the example), on
+     * any day. Even then a teacher only doubles up with the same subject: see
+     * {@see self::hasTeacherConflict()}.
      */
-    public static function isConflictExempt(SchoolDay $day, Subject $subject): bool
+    public static function isConflictExempt(Subject $subject): bool
     {
-        return $day === SchoolDay::Kamis && $subject->allows_concurrent_scheduling;
+        return (bool) $subject->allows_concurrent_scheduling;
     }
 
     /**
@@ -146,7 +146,7 @@ class Schedule extends Model
         Subject $subject,
         ?int $ignoreId = null,
     ): bool {
-        if (self::isConflictExempt($day, $subject)) {
+        if (self::isConflictExempt($subject)) {
             return false;
         }
 
@@ -161,7 +161,7 @@ class Schedule extends Model
 
     /**
      * Determine whether this exact lesson (same class, slot, subject and teacher) is already
-     * scheduled. The Kamis exemption lets a class hold two lessons in a slot, but never the
+     * scheduled. The parallel-subject exemption lets a class hold two lessons in a slot, but never the
      * same lesson twice.
      */
     public static function existsExactly(
@@ -193,17 +193,48 @@ class Schedule extends Model
         Subject $subject,
         ?int $ignoreId = null,
     ): bool {
-        if (self::isConflictExempt($day, $subject)) {
-            return false;
-        }
-
         return static::query()
             ->where('semester_id', $semesterId)
             ->where('day_of_week', $day->value)
             ->where('time_slot_id', $timeSlotId)
             ->where('teacher_id', $teacherId)
+            ->when(self::isConflictExempt($subject), fn ($query) => $query->where('subject_id', '!=', $subject->id))
             ->when($ignoreId, fn ($query) => $query->whereKeyNot($ignoreId))
             ->exists();
+    }
+
+    /**
+     * Split lessons into runs of back-to-back slots for the same classroom and subject, e.g.
+     * 07.30–08.00 + 08.00–08.30 is one run. A gap, another classroom or another subject
+     * starts a new run. Used to fill one journal for a whole run.
+     *
+     * @param  Collection<int, self>  $schedules
+     * @return list<Collection<int, self>>
+     */
+    public static function groupConsecutive(Collection $schedules): array
+    {
+        $groups = [];
+        $current = null;
+
+        foreach ($schedules->load('timeSlot')->sortBy(fn (self $schedule): string => $schedule->timeSlot->starts_at) as $schedule) {
+            $last = $current?->last();
+
+            if (
+                $last
+                && $last->classroom_id === $schedule->classroom_id
+                && $last->subject_id === $schedule->subject_id
+                && $last->timeSlot->ends_at === $schedule->timeSlot->starts_at
+            ) {
+                $current->push($schedule);
+
+                continue;
+            }
+
+            $current = new Collection([$schedule]);
+            $groups[] = $current;
+        }
+
+        return $groups;
     }
 
     /**

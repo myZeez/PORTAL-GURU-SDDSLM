@@ -21,4 +21,21 @@ class AvatarController extends Controller
             'X-Content-Type-Options' => 'nosniff',
         ]);
     }
+
+    /**
+     * Serve an uploaded photo by its `/media/avatars/...` address, which the upload form
+     * previews with. Where the public/storage symlink exists the web server answers first;
+     * where it does not (shared hosting), this keeps the address working.
+     */
+    public function file(string $file): StreamedResponse
+    {
+        $path = "avatars/{$file}";
+
+        abort_unless(Storage::disk('public')->exists($path), 404);
+
+        return Storage::disk('public')->response($path, null, [
+            'Cache-Control' => 'private, max-age=86400',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
 }

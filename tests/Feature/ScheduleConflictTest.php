@@ -134,7 +134,7 @@ class ScheduleConflictTest extends TestCase
         ));
     }
 
-    public function test_pjok_on_a_different_day_is_not_exempt(): void
+    public function test_pjok_to_several_classes_is_allowed_on_any_day(): void
     {
         $semester = Semester::factory()->create();
         $slot = TimeSlot::factory()->create();
@@ -149,13 +149,32 @@ class ScheduleConflictTest extends TestCase
             'subject_id' => $pjok->id,
         ]);
 
-        $this->assertTrue(Schedule::hasTeacherConflict(
+        $this->assertFalse(Schedule::hasTeacherConflict(
             $semester->id,
             SchoolDay::Senin,
             $slot->id,
             $teacher->id,
             $pjok,
         ));
+    }
+
+    public function test_a_teacher_cannot_double_up_pjok_with_a_different_subject(): void
+    {
+        $semester = Semester::factory()->create();
+        $slot = TimeSlot::factory()->create();
+        $teacher = User::factory()->create();
+        $pjok = Subject::factory()->create(['allows_concurrent_scheduling' => true]);
+        $matematika = Subject::factory()->create(['allows_concurrent_scheduling' => false]);
+
+        Schedule::factory()->create([
+            'semester_id' => $semester->id,
+            'day_of_week' => SchoolDay::Senin,
+            'time_slot_id' => $slot->id,
+            'teacher_id' => $teacher->id,
+            'subject_id' => $matematika->id,
+        ]);
+
+        $this->assertTrue(Schedule::hasTeacherConflict($semester->id, SchoolDay::Senin, $slot->id, $teacher->id, $pjok));
     }
 
     public function test_matematika_on_kamis_is_not_exempt(): void

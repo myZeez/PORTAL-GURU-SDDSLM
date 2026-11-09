@@ -333,7 +333,7 @@ class ScheduleResource extends Resource
         }
 
         if ($teacher) {
-            if ($classrooms->count() > 1 && ! Schedule::isConflictExempt($day, $subject)) {
+            if ($classrooms->count() > 1 && ! Schedule::isConflictExempt($subject)) {
                 $problems['teacher_id'][] = "{$teacher->name} tidak bisa mengajar {$classrooms->count()} rombel sekaligus pada jam yang sama. Pilih satu rombel saja per jadwal.";
             }
 

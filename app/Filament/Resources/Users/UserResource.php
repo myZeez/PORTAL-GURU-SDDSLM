@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Users;
 
 use App\Enums\Role;
 use App\Filament\Resources\Users\Pages\ManageUsers;
+use App\Models\RecordAudit;
 use App\Models\User;
 use BackedEnum;
 use Filament\Actions\DeleteAction;
@@ -20,6 +21,8 @@ use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 use UnitEnum;
@@ -77,11 +80,13 @@ class UserResource extends Resource
                             ->helperText('Saat mengedit, kosongkan kalau password tidak diganti.'),
                         Select::make('role')
                             ->label('Peran')
-                            ->options(Role::class)
+                            ->options(fn (): array => self::assignableRoles())
+                            ->disabled(fn (?User $record): bool => self::isOwnAccount($record))
                             ->placeholder('Guru (tidak ada peran khusus)')
                             ->helperText('Wali kelas dan pendamping diatur dari data rombel.'),
                         Toggle::make('is_active')
                             ->label('Aktif')
+                            ->disabled(fn (?User $record): bool => self::isOwnAccount($record))
                             ->helperText('Akun nonaktif tidak bisa masuk, tapi riwayat datanya tetap tersimpan.')
                             ->default(true),
                     ]),
@@ -99,7 +104,7 @@ class UserResource extends Resource
             ->columns([
                 ImageColumn::make('photo_path')
                     ->label('Foto')
-                    ->disk('public')
+                    ->getStateUsing(fn (User $record): ?string => $record->getFilamentAvatarUrl())
                     ->circular(),
                 TextColumn::make('code')
                     ->label('Kode')
@@ -130,9 +135,73 @@ class UserResource extends Resource
                     ->label('Status aktif'),
             ])
             ->recordActions([
-                EditAction::make(),
+                EditAction::make()
+                    ->using(fn (User $record, array $data): User => self::saveWithAudit($record, $data)),
                 DeleteAction::make(),
             ]);
+    }
+
+    /**
+     * Roles the signed-in user may hand out. Only a Super Admin can make another Super Admin.
+     *
+     * @return array<string, string>
+     */
+    public static function assignableRoles(): array
+    {
+        return collect(Role::cases())
+            ->reject(fn (Role $role): bool => $role === Role::SuperAdmin && ! auth()->user()->isSuperAdmin())
+            ->mapWithKeys(fn (Role $role): array => [$role->value => $role->getLabel()])
+            ->all();
+    }
+
+    /**
+     * Nobody switches off or demotes their own account, which would lock them out.
+     */
+    public static function isOwnAccount(?User $record): bool
+    {
+        return $record?->is(auth()->user()) ?? false;
+    }
+
+    /**
+     * Save an account edit and write what changed to its history. A password set by someone
+     * else is a temporary one, so the owner must choose their own at the next sign-in.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public static function saveWithAudit(User $record, array $data): User
+    {
+        $actor = auth()->user();
+
+        if (self::isOwnAccount($record)) {
+            $data = Arr::except($data, ['role', 'is_active']);
+        }
+
+        if (! $actor->isSuperAdmin() && ($data['role'] ?? null) === Role::SuperAdmin->value) {
+            $data = Arr::except($data, ['role']);
+        }
+
+        $passwordChanged = filled($data['password'] ?? null);
+
+        if ($passwordChanged && ! self::isOwnAccount($record)) {
+            $data['must_change_password'] = true;
+        }
+
+        DB::transaction(function () use ($record, $data, $actor, $passwordChanged): void {
+            $before = $record->auditSnapshot();
+
+            $record->update($data);
+
+            $after = $record->fresh()->auditSnapshot();
+
+            if ($passwordChanged) {
+                $before['Password'] = '—';
+                $after['Password'] = 'Diganti';
+            }
+
+            RecordAudit::record($record, RecordAudit::ACTION_UPDATED, $record->auditLabel(), $before, $after, null, $actor);
+        });
+
+        return $record;
     }
 
     public static function getPages(): array

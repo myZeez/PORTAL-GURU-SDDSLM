@@ -41,7 +41,8 @@ return [
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),
-            'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/storage',
+            // Served by the app itself (see AvatarController::file), so it works without a storage symlink.
+            'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/media',
             'visibility' => 'public',
             'throw' => false,
             'report' => false,

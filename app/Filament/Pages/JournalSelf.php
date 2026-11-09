@@ -21,6 +21,7 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * @property-read Schema $form
@@ -175,13 +176,24 @@ class JournalSelf extends Page
             return;
         }
 
-        Journal::create([...$data, 'teacher_id' => auth()->id()]);
+        $date = Carbon::parse($data['date']);
+        $chosenId = (int) $data['schedule_id'];
+
+        $group = collect($this->unfilledGroups($date))
+            ->first(fn (Collection $slots): bool => $slots->contains('id', $chosenId))
+            ?? new Collection([Schedule::query()->findOrFail($chosenId)]);
+
+        DB::transaction(function () use ($group, $data): void {
+            foreach ($group as $schedule) {
+                Journal::create([...$data, 'schedule_id' => $schedule->id, 'teacher_id' => auth()->id()]);
+            }
+        });
 
         $this->cancelEdit();
 
         Notification::make()
             ->success()
-            ->title('Jurnal tersimpan.')
+            ->title($group->count() > 1 ? "Jurnal tersimpan untuk {$group->count()} jam berurutan." : 'Jurnal tersimpan.')
             ->send();
     }
 
@@ -249,9 +261,9 @@ class JournalSelf extends Page
     }
 
     /**
-     * Get the signed-in teacher's own schedule slots effective on the given date (their
-     * own, or ones they are covering as a substitute), labelled with classroom, subject
-     * and time so they can tell slots apart.
+     * The signed-in teacher's lessons on the given date that still need a journal (their
+     * own, or ones they are covering as a substitute). Back-to-back slots of the same
+     * classroom and subject are one choice, so one journal covers the whole run.
      *
      * @return array<int, string>
      */
@@ -261,27 +273,70 @@ class JournalSelf extends Page
             return [];
         }
 
-        return Schedule::effectiveForTeacherOnDate(auth()->id(), Carbon::parse($date))
-            ->load(['classroom', 'subject', 'timeSlot'])
-            ->mapWithKeys(fn (Schedule $schedule): array => [
-                $schedule->id => "{$schedule->classroom->label} — {$schedule->subject->name} ({$schedule->timeSlot->label})",
-            ])
-            ->all();
+        $options = [];
+
+        foreach ($this->unfilledGroups(Carbon::parse($date)) as $slots) {
+            $first = $slots->first();
+            $range = Journal::timeRange($first->timeSlot->starts_at, $slots->last()->timeSlot->ends_at);
+            $jp = $slots->count() > 1 ? " · {$slots->sum('jp')} JP" : '';
+
+            $options[$first->id] = "{$first->classroom->label} — {$first->subject->name} ({$range}{$jp})";
+        }
+
+        foreach (Schedule::effectiveForTeacherOnDate(auth()->id(), Carbon::parse($date))->load(['classroom', 'subject', 'timeSlot']) as $schedule) {
+            $isFilled = Journal::query()->where('schedule_id', $schedule->id)->whereDate('date', $date)->exists();
+
+            if ($isFilled) {
+                $options[$schedule->id] = "{$schedule->classroom->label} — {$schedule->subject->name} ({$schedule->timeSlot->label}) · sudah diisi";
+            }
+        }
+
+        return $options;
     }
 
     /**
-     * Get the signed-in teacher's own journal entries from the last 14 days, most recent
-     * first.
-     *
-     * @return Collection<int, Journal>
+     * @return list<Collection<int, Schedule>>
      */
-    public function getHistory(): Collection
+    private function unfilledGroups(Carbon $date): array
     {
-        return Journal::query()
-            ->where('teacher_id', auth()->id())
-            ->where('date', '>=', Carbon::today()->subDays(14))
-            ->with(['schedule.classroom', 'schedule.subject', 'schedule.timeSlot'])
-            ->orderByDesc('date')
-            ->get();
+        $effective = Schedule::effectiveForTeacherOnDate(auth()->id(), $date)
+            ->load(['classroom', 'subject', 'timeSlot']);
+
+        $filledIds = Journal::query()
+            ->whereIn('schedule_id', $effective->pluck('id'))
+            ->whereDate('date', $date->toDateString())
+            ->pluck('schedule_id');
+
+        return Schedule::groupConsecutive(
+            $effective->reject(fn (Schedule $schedule): bool => $filledIds->contains($schedule->id))->values()
+        );
+    }
+
+    /**
+     * The signed-in teacher's own journals from the last 14 days, most recent first, with
+     * back-to-back slots shown as one entry.
+     *
+     * @return list<array{journal: Journal, journals: list<Journal>, label: string, jp: int}>
+     */
+    public function getHistory(): array
+    {
+        return Journal::mergeConsecutive(
+            Journal::query()
+                ->where('teacher_id', auth()->id())
+                ->where('date', '>=', Carbon::today()->subDays(14))
+                ->with(['schedule.classroom', 'schedule.subject', 'schedule.timeSlot'])
+                ->get()
+        );
+    }
+
+    /**
+     * The merged entry (time range and JP) the open detail belongs to.
+     *
+     * @return array{journal: Journal, journals: list<Journal>, label: string, jp: int}|null
+     */
+    public function getDetailGroup(): ?array
+    {
+        return collect($this->getHistory())
+            ->first(fn (array $group): bool => collect($group['journals'])->contains('id', $this->detailId));
     }
 }

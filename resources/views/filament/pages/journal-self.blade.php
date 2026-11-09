@@ -29,7 +29,8 @@
                             </div>
                             <div>
                                 <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Kelas & Jam</p>
-                                <p class="mt-0.5 font-semibold text-gray-950 dark:text-white">{{ $detail->schedule->classroom->label }} · {{ $detail->schedule->timeSlot->label }}</p>
+                                <p class="mt-0.5 font-semibold text-gray-950 dark:text-white">@php $detailGroup = $this->getDetailGroup(); @endphp
+                                {{ $detail->schedule->classroom->label }} · {{ $detailGroup['label'] ?? $detail->schedule->timeSlot->label }}@if (($detailGroup['jp'] ?? 1) > 1) · {{ $detailGroup['jp'] }} JP @endif</p>
                             </div>
                             <div class="sm:col-span-2">
                                 <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Materi</p>
@@ -66,7 +67,8 @@
                     </div>
                 @endif
 
-                @forelse ($this->getHistory() as $entry)
+                @forelse ($this->getHistory() as $group)
+                    @php $entry = $group['journal']; @endphp
                     <div class="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-3 dark:border-white/10 dark:bg-gray-900">
                         <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-600 dark:bg-primary-400/10 dark:text-primary-400">
                             <x-filament::icon icon="heroicon-o-pencil-square" class="h-4.5 w-4.5" />
@@ -75,6 +77,9 @@
                         <div class="min-w-0 flex-1">
                             <p class="truncate text-sm font-bold text-gray-950 dark:text-white">
                                 {{ $entry->schedule->classroom->label }} — {{ $entry->schedule->subject->name }}
+                            </p>
+                            <p class="truncate text-xs font-semibold text-gray-600 dark:text-gray-300">
+                                {{ $group['label'] }}@if ($group['jp'] > 1) · {{ $group['jp'] }} JP @endif
                             </p>
                             <p class="truncate text-xs font-medium text-gray-500 dark:text-gray-400">
                                 {{ $entry->topic }} · H:{{ $entry->students_present }} I:{{ $entry->students_permitted }} S:{{ $entry->students_sick }} A:{{ $entry->students_absent }}

@@ -5,6 +5,7 @@ use App\Http\Controllers\ReportPdfController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth')->get('avatars/{user}', [AvatarController::class, 'show'])->name('avatars.show');
+Route::middleware('auth')->get('media/avatars/{file}', [AvatarController::class, 'file'])->where('file', '[A-Za-z0-9._-]+');
 
 Route::middleware('auth')->prefix('reports')->name('reports.')->group(function (): void {
     Route::get('attendances.pdf', [ReportPdfController::class, 'attendances'])->name('attendances.pdf');

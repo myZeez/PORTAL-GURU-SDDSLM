@@ -458,13 +458,13 @@ class ScheduleMatrix extends Page
 
     /**
      * Two or more lessons in one slot for the same teacher/class only clash when at least
-     * one of them is not a subject the school deliberately runs in parallel on Kamis.
+     * one of them is not a subject the school deliberately runs in parallel (PJOK).
      *
      * @param  Collection<int, Schedule>  $group
      */
     private function isClash(Collection $group): bool
     {
         return $group->count() > 1
-            && $group->contains(fn (Schedule $schedule): bool => ! Schedule::isConflictExempt($schedule->day_of_week, $schedule->subject));
+            && $group->contains(fn (Schedule $schedule): bool => ! Schedule::isConflictExempt($schedule->subject));
     }
 }

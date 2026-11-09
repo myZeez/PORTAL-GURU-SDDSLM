@@ -10,6 +10,7 @@ use Carbon\CarbonInterface;
 use Database\Factories\JournalFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -121,6 +122,67 @@ class Journal extends Model
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * Show back-to-back journals as one: the same date, teacher, classroom, subject and
+     * topic over consecutive slots (a journal filled for 07.30–08.30 is saved as one row per
+     * slot, because attendance and monitoring count slots). Starts at the first slot, ends
+     * at the last and adds the JP up.
+     *
+     * @param  EloquentCollection<int, self>  $journals  With schedule.classroom, schedule.subject and schedule.timeSlot loaded.
+     * @return list<array{journal: self, journals: list<self>, label: string, jp: int}>
+     */
+    public static function mergeConsecutive(EloquentCollection $journals): array
+    {
+        $sorted = $journals->sortBy([
+            fn (self $a, self $b): int => $b->date->timestamp <=> $a->date->timestamp,
+            fn (self $a, self $b): int => [$a->teacher_id, $a->schedule->classroom_id, $a->schedule->subject_id, $a->topic, $a->schedule->timeSlot->starts_at]
+                <=> [$b->teacher_id, $b->schedule->classroom_id, $b->schedule->subject_id, $b->topic, $b->schedule->timeSlot->starts_at],
+        ]);
+
+        $groups = [];
+
+        foreach ($sorted as $journal) {
+            $key = count($groups) - 1;
+            $last = $key >= 0 ? end($groups[$key]) : null;
+
+            if (
+                $last
+                && $last->date->isSameDay($journal->date)
+                && $last->teacher_id === $journal->teacher_id
+                && $last->schedule->classroom_id === $journal->schedule->classroom_id
+                && $last->schedule->subject_id === $journal->schedule->subject_id
+                && $last->topic === $journal->topic
+                && $last->schedule->timeSlot->ends_at === $journal->schedule->timeSlot->starts_at
+            ) {
+                $groups[$key][] = $journal;
+
+                continue;
+            }
+
+            $groups[] = [$journal];
+        }
+
+        return array_map(function (array $group): array {
+            $first = $group[0];
+            $last = end($group);
+
+            return [
+                'journal' => $first,
+                'journals' => $group,
+                'label' => self::timeRange($first->schedule->timeSlot->starts_at, $last->schedule->timeSlot->ends_at),
+                'jp' => array_sum(array_map(fn (self $journal): int => $journal->schedule->jp, $group)),
+            ];
+        }, $groups);
+    }
+
+    /**
+     * A time range the way the school writes it, from database times: "07.30–08.30".
+     */
+    public static function timeRange(string $startsAt, string $endsAt): string
+    {
+        return str_replace(':', '.', substr($startsAt, 0, 5)).'–'.str_replace(':', '.', substr($endsAt, 0, 5));
     }
 
     /**

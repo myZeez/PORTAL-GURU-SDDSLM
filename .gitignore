@@ -33,5 +33,12 @@ Homestead.yaml
 Thumbs.db
 /CLAUDE.md
 /graphify-out/
-/output/hostinger-stage/
-/output/portal-guru-hostinger.zip
+/output/
+/tmp/
+/DATA/
+/.agents/
+/*.sql
+/*.zip
+/HERO IMG.png
+/LOGO SDID.png
+/REVISI FITUR SIPEKA.docx
